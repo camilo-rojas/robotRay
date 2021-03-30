@@ -1,7 +1,5 @@
 bs4
-urllib
 pandas
-copy
 logging
 peewee
 configparser

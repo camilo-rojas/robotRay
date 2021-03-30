@@ -11,8 +11,8 @@ robotRay server v1.0
 # Scrapping info using BS4 with finance.yahoo.com and finviz.com
 import threading
 import signal
-import time
 import schedule
+import time
 import sys
 import os
 
@@ -25,7 +25,15 @@ import os
 
 class server():
     def __init__(self, *args, **kwargs):
+        self.intro()
+        # add logic for argument based initalization and parametization.
+        # runCycle takes care of amount of intraday fetches
+        self.runCycle = 0
+        self.threads = []
+        self.running = True
+        self.log.logger.info("Initialization finished robotRay server")
 
+    def intro(self):
         self.log = logger()
         self.log.logger.info("")
         self.log.logger.info(
@@ -36,10 +44,6 @@ class server():
         self.log.logger.info(
             "-----------------------------------------------")
         self.log.logger.info("")
-        self.log.logger.info("Init robotRay server")
-        # add logic for argument based initalization and parametization.
-        # runCycle takes care of amount of intraday fetches
-        self.runCycle = 0
 
     def startup(self):
         self.log.logger.info("-- Startup robotRay server")
@@ -147,16 +151,51 @@ class server():
 #        schedule.every(3).minutes.do(self.run_threaded, self.think) moved to intraday fetcher due to conflicts in io
 
     def runServer(self):
+        self.run_threaded(self.runScheduler)
         while True:
+            command = input("> ")
+            try:
+                if (command == "intro" or command == "about"):
+                    self.intro()
+                elif(command == "quit" or command == "exit"):
+                    if input("\nReally quit? (y/n)>").lower().startswith('y'):
+                        self.running = False
+                        self.shutdown()
+                elif(command == "help"):
+                    self.log.logger.info("Commands: help, quit, exit, intro, about, jobs")
+                elif(command == "jobs"):
+                    self.log.logger.info("Currently running: " +
+                                         str(threading.active_count())+" threads. Thread info:")
+                    for threadStatus in self.threads:
+                        self.log.logger.info(str(self.get_thread_info()))
+                    self.log.logger.info("End of job information")
+                elif(command == ""):
+                    pass
+                else:
+                    self.log.logger.info("Unknown command, try help for commands")
+            except KeyboardInterrupt:
+                exit_gracefully(signal.SIGINT, exit_gracefully)
+                break
+
+    def runScheduler(self):
+        while self.running:
             schedule.run_pending()
             time.sleep(1)
-#            print(">",end=" ")
-#            msg=sys.stdin.readline()
-#            print(">"+msg)
 
     def run_threaded(self, job_func):
         job_thread = threading.Thread(target=job_func)
         job_thread.start()
+        self.threads.append(job_thread)
+
+    def get_thread_info(myThread):
+        return str(myThread)
+
+    def shutdown(self):
+        self.log.logger.info("999. - Shutdown initiated")
+        for threadtokill in self.threads:
+            threadtokill.join()
+        self.log.logger.info("999. - Shutdown completed")
+        sys.exit()
 
     def isworkday(self):
         import datetime
@@ -176,17 +215,22 @@ def exit_gracefully(signum, frame):
             sys.exit()
 
     except KeyboardInterrupt:
-        print("Ok, quitting robotRay server")
+        print("\nOk, quitting robotRay server")
         sys.exit()
 
 
+# main server run procedure
 if __name__ == '__main__':
-    original_sigint = signal.getsignal(signal.SIGINT)
-    signal.signal(signal.SIGINT, exit_gracefully)
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-    from rrlib.rrLogger import logger
-    from rrlib.rrDb import rrDbManager
-    from rrlib.rrThinker import thinker
-    mainserver = server()
-    mainserver.startup()
-    mainserver.runServer()
+    while True:
+        original_sigint = signal.getsignal(signal.SIGINT)
+        signal.signal(signal.SIGINT, exit_gracefully)
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        from rrlib.rrLogger import logger
+        from rrlib.rrDb import rrDbManager
+        from rrlib.rrThinker import thinker
+        try:
+            mainserver = server()
+            mainserver.startup()
+            mainserver.runServer()
+        except KeyboardInterrupt:
+            exit_gracefully(signal.SIGINT, exit_gracefully)
