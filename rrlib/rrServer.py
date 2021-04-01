@@ -28,6 +28,12 @@ class server():
         self.intro()
         # add logic for argument based initalization and parametization.
         # runCycle takes care of amount of intraday fetches
+
+        def SigIntHand(SIG, FRM):
+            self.log.logger.info(
+                "To close wait for prompt and enter quit or exit. Ctrl-C does not exit")
+
+        signal.signal(signal.SIGINT, SigIntHand)
         self.runCycle = 0
         self.threads = []
         self.running = True
@@ -73,12 +79,12 @@ class server():
         self.log.logger.info("")
 
     def getStockData(self):
-        self.log.logger.info("10. Getting stock data, daily process ")
+        self.log.logger.info("10. Getting stock data, hourly process ")
         if self.isworkday():
             try:
                 self.db.getStockData()
                 self.log.logger.info(
-                    "10. DONE - Stock data successfully fetched")
+                    "10. DONE - Stock data fetched")
             except Exception:
                 self.log.logger.error("10. Error fetching daily stock data")
 
@@ -145,7 +151,7 @@ class server():
         # self.log.logger.info("99. Testing")
 
     def scheduler(self):
-        schedule.every(4).hours.do(self.run_threaded, self.getStockData)
+        schedule.every(1).hours.do(self.run_threaded, self.getStockData)
         schedule.every(5).minutes.do(self.run_threaded, self.getIntradayData)
         schedule.every().day.at("19:50").do(self.run_threaded, self.sendReport)
 #        schedule.every(3).minutes.do(self.run_threaded, self.think) moved to intraday fetcher due to conflicts in io
@@ -153,28 +159,69 @@ class server():
     def runServer(self):
         self.run_threaded(self.runScheduler)
         while True:
-            command = input("> ")
             try:
+                command = input("> ")
                 if (command == "intro" or command == "about"):
                     self.intro()
                 elif(command == "quit" or command == "exit"):
-                    if input("\nReally quit? (y/n)>").lower().startswith('y'):
+                    if input("\n998 - Really quit? (y/n)>").lower().startswith('y'):
                         self.running = False
                         self.shutdown()
                 elif(command == "help"):
-                    self.log.logger.info("Commands: help, quit, exit, intro, about, jobs")
+                    self.log.logger.info(
+                        "995 - General Commands: help, clear, jobs, isdbinuse, quit, exit, intro, about")
+                    self.log.logger.info(
+                        "995 - The following are scheduled automatically, run only for override")
+                    self.log.logger.info(
+                        "995 - Stock Data manual commands: getstockdata, getintradaydata, think")
+                    self.log.logger.info(
+                        "995 - Option Data manual commands: getoptiondata")
+                    self.log.logger.info(
+                        "995 - Run prospect info: getprospects, sendprospects")
+                elif(command == "clear"):
+                    if sys.platform == 'win32':
+                        os.system("cls")
+                    else:
+                        os.system("clear")
+                elif(command == "getoptiondata"):
+                    self.log.logger.info(
+                        "20 - This will take a couple of minutes, please don't cancel")
+                    self.getOptionData()
+                elif(command == "isdbinuse"):
+                    if(self.db.isDbInUse()):
+                        self.log.logger.info("994 - DB is currently: Not used by any thread")
+                    else:
+                        self.log.logger.info("994 - DB is currently: In Use by thread")
+                elif(command == "getprospects"):
+                    self.log.logger.info("130 - Getting prospects (soon)")
+                elif(command == "sendprospects"):
+                    self.log.logger.info("140 - Sending prospects (soon)")
+                elif(command == "status"):
+                    self.log.logger.info(
+                        "500 - Status report RobotRay. Running for X minutes. Currently running on "+str(threading.active_count())+" threads.")
+                    self.log.logger.info(
+                        "500 - Last stock data update: XXX, Last option data update: XXX")
+                    self.log.logger.info("500 - Currently getting data from: Finviz + Yahoo")
+                    self.log.logger.info("500 - Last think process: XXX")
+                elif(command == "getstockdata"):
+                    self.log.logger.info(
+                        "10 - This will take a couple of minutes, please don't cancel")
+                    self.getStockData()
+                elif(command == "getintradaydata"):
+                    self.getIntradayData()
                 elif(command == "jobs"):
-                    self.log.logger.info("Currently running: " +
-                                         str(threading.active_count())+" threads. Thread info:")
-                    for threadStatus in self.threads:
-                        self.log.logger.info(str(self.get_thread_info()))
-                    self.log.logger.info("End of job information")
+                    self.log.logger.info("996 - Currently running: " +
+                                         str(threading.active_count())+" threads.")
+                    # for threadStatus in self.threads:
+                    #    self.log.logger.info("996 - "+str(self.get_thread_info()))
+                    # self.log.logger.info("996 - End of job information")
                 elif(command == ""):
                     pass
                 else:
                     self.log.logger.info("Unknown command, try help for commands")
             except KeyboardInterrupt:
-                exit_gracefully(signal.SIGINT, exit_gracefully)
+                self.running = False
+                self.shutdown()
                 break
 
     def runScheduler(self):
@@ -211,11 +258,11 @@ class server():
 def exit_gracefully(signum, frame):
     signal.signal(signal.SIGINT, original_sigint)
     try:
-        if input("\nReally quit? (y/n)>").lower().startswith('y'):
+        if input("\n998. - Really quit? (y/n)>").lower().startswith('y'):
             sys.exit()
 
     except KeyboardInterrupt:
-        print("\nOk, quitting robotRay server")
+        print("\n998. - Ok, quitting robotRay server")
         sys.exit()
 
 

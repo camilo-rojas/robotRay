@@ -5,3 +5,4 @@ peewee
 configparser
 schedule
 requests
+finvizfinance

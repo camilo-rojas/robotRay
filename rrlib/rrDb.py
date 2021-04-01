@@ -19,7 +19,8 @@ Entities:
     - Stocks to watch
         - Stock KPI's to monitor from Finviz - updated daily
         - Intraday performance - updated every 5 mins overwritten
-        - Option Put valuation for operational months - updated every 3 hours - tracking months current + 3-8 months
+        - Option Put valuation for operational months - updated every 3 hours -
+        tracking months current + 3-8 months
     - Triggers for correct intraday action with monthly recommendation
     - Dates for expiration for Y+5 of option puts
 
@@ -33,6 +34,10 @@ class rrDbManager:
 
     def __init__(self):
         from rrlib.rrLogger import logger
+        import configparser
+        config = configparser.ConfigParser()
+        config.read("rrlib/robotRay.ini")
+        self.stocks = config.get('stocks', 'stocks')
         self.log = logger()
         self.log.logger.debug("  DB Manager starting.  ")
 
@@ -43,18 +48,26 @@ class rrDbManager:
         OptionData.create_table()
         IntradayStockData.create_table()
 
+    def isDbInUse(self):
+        try:
+            status = db.connect()
+        except Exception:
+            status = False
+        db.close()
+        return status
+
     def initializeStocks(self):
         self.log.logger.debug("  DB Manager initializing Stock Table.  ")
         Stock.drop_table(True)
         Stock.create_table()
-        stocks = [{'ticker': 'SHOP'}, {'ticker': 'SQ'}, {'ticker': 'NVDA'}, {'ticker': 'BABA'},
-                  {'ticker': 'TTD'}, {'ticker': 'NFLX'}, {'ticker': 'HUBS'},
-                  {'ticker': 'SPLK'}, {'ticker': 'TEAM'}, {'ticker': 'CRM'},
-                  {'ticker': 'WDAY'}, {'ticker': 'PYPL'}, {
-                      'ticker': 'VMW'}, {'ticker': 'NTNX'},
-                  {'ticker': 'CGC'}]
-
+        stockList = [x.strip() for x in self.stocks.split(',')]
+        self.log.logger.debug(stockList)
+        stocks = []
+        for st in stockList:
+            stocks.append({'ticker': st})
+        self.log.logger.debug(stocks)
         Stock.insert_many(stocks).execute()
+        db.close()
 
     def getStocks(self):
         df = pd.DataFrame(columns=['ticker'])
@@ -64,9 +77,15 @@ class rrDbManager:
         except Exception:
             self.log.logger.error(
                 "  DB Manager Error. Get Stock Table without table, try initializing.  ")
+        db.close()
         return df
 
     def getStockData(self):
+        try:
+            db.connect()
+        except Exception:
+            self.log.logger.error(" DB already opened ")
+            return False
         from rrlib.rrDataFetcher import StockDataFetcher as stckFetcher
         from random import randint
         self.log.logger.debug("  DB Manager Get Stock data.  ")
@@ -78,13 +97,13 @@ class rrDbManager:
                     "  DB Manager Attempting to retreive data for "+stock.ticker)
                 try:
                     dataFetcher = stckFetcher(stock.ticker).getData()
-                    price = float(dataFetcher.iloc[65]['value'])
+                    price = float(dataFetcher.iloc[68]['value'])
                     perfWeek = float(
-                        dataFetcher.iloc[5]['value'].strip('%'))/100
+                        dataFetcher.iloc[9]['value'].strip('%'))/100
                     perfMonth = float(
-                        dataFetcher.iloc[11]['value'].strip('%'))/100
+                        dataFetcher.iloc[15]['value'].strip('%'))/100
                     perfQuarter = float(
-                        dataFetcher.iloc[17]['value'].strip('%'))/100
+                        dataFetcher.iloc[21]['value'].strip('%'))/100
                     # strikePctg import
                     import configparser
                     config = configparser.ConfigParser()
@@ -101,19 +120,19 @@ class rrDbManager:
                         strike = round(strike, -2)
                     # print(strike)
                     row = {'stock': stock.ticker, 'strike': str(strike), 'timestamp': str(datetime.datetime.now()),
-                           'price': dataFetcher.iloc[65]['value'], 'prevClose': dataFetcher.iloc[59]['value'],
-                           'salesqq': dataFetcher.iloc[50]['value'], 'sales5y': dataFetcher.iloc[44]['value'],
-                           'beta': dataFetcher.iloc[41]['value'], 'roe': dataFetcher.iloc[33]['value'],
-                           'roi': dataFetcher.iloc[39]['value'], 'recom': dataFetcher.iloc[66]['value'],
-                           'earnDate': dataFetcher.iloc[62]['value'], 'targetPrice': dataFetcher.iloc[28]['value'],
-                           'shortFloat': dataFetcher.iloc[16]['value'], 'shortRatio': dataFetcher.iloc[22]['value'],
-                           'w52High': dataFetcher.iloc[40]['value'], 'w52Low': dataFetcher.iloc[46]['value'],
-                           'relVolume': dataFetcher.iloc[58]['value'], 'sma20': dataFetcher.iloc[67]['value'],
-                           'sma50': dataFetcher.iloc[68]['value'], 'sma200': dataFetcher.iloc[69]['value'],
-                           'perfDay': dataFetcher.iloc[71]['value'], 'perfWeek': dataFetcher.iloc[5]['value'],
-                           'perfMonth': dataFetcher.iloc[11]['value'], 'perfQuarter': dataFetcher.iloc[17]['value'],
-                           'perfHalfYear': dataFetcher.iloc[23]['value'], 'perfYear': dataFetcher.iloc[29]['value'],
-                           'perfYTD': dataFetcher.iloc[35]['value']}
+                           'price': dataFetcher.iloc[68]['value'], 'prevClose': dataFetcher.iloc[62]['value'],
+                           'salesqq': dataFetcher.iloc[53]['value'], 'sales5y': dataFetcher.iloc[47]['value'],
+                           'beta': dataFetcher.iloc[44]['value'], 'roe': dataFetcher.iloc[36]['value'],
+                           'roi': dataFetcher.iloc[42]['value'], 'recom': dataFetcher.iloc[69]['value'],
+                           'earnDate': dataFetcher.iloc[65]['value'], 'targetPrice': dataFetcher.iloc[31]['value'],
+                           'shortFloat': dataFetcher.iloc[20]['value'], 'shortRatio': dataFetcher.iloc[26]['value'],
+                           'w52High': dataFetcher.iloc[43]['value'], 'w52Low': dataFetcher.iloc[49]['value'],
+                           'relVolume': dataFetcher.iloc[61]['value'], 'sma20': dataFetcher.iloc[70]['value'],
+                           'sma50': dataFetcher.iloc[71]['value'], 'sma200': dataFetcher.iloc[72]['value'],
+                           'perfDay': dataFetcher.iloc[74]['value'], 'perfWeek': dataFetcher.iloc[9]['value'],
+                           'perfMonth': dataFetcher.iloc[15]['value'], 'perfQuarter': dataFetcher.iloc[21]['value'],
+                           'perfHalfYear': dataFetcher.iloc[27]['value'], 'perfYear': dataFetcher.iloc[32]['value'],
+                           'perfYTD': dataFetcher.iloc[38]['value']}
                     self.log.logger.debug("  DB Manager Built row:"+str(row))
                     StockData.insert(row).execute()
                     self.log.logger.debug(
@@ -126,9 +145,15 @@ class rrDbManager:
                 "  DB Manager Error failed to fetch data.  Please check internet connectivity or finviz.com for availability."
                 "  Using cached version.")
             return False
+        db.close()
         return True
 
     def getIntradayData(self):
+        try:
+            db.connect()
+        except Exception:
+            self.log.logger.error(" DB already opened ")
+            return False
         from random import randint
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
         from rrlib.rrDataFetcher import StockDataFetcher as stckFetcher
@@ -170,6 +195,7 @@ class rrDbManager:
                 "  DB Manager Error failed to fetch intraday data.  Please check internet connectivity "
                 "or yahoo.com for availability.  Using cached verssion.")
             return False
+        db.close()
         return True
 
     def initializeExpirationDate(self):
@@ -201,6 +227,7 @@ class rrDbManager:
             ExpirationDate.insert(
                 {'date': third_friday(2, 4, month, year)}).execute()
             x = x+1
+        db.close()
 
     def completeExpirationDate(self, monthYear):
         completeDate = ""
@@ -213,9 +240,15 @@ class rrDbManager:
             self.log.logger.error(
                 "    Error completing expiration date "+monthYear)
             return False
+        db.close()
         return completeDate
 
     def getOptionData(self):
+        try:
+            db.connect()
+        except Exception:
+            self.log.logger.error(" DB already opened ")
+            return False
         from rrlib.rrDataFetcher import OptionDataFetcher as optFetcher
         from random import randint
         self.log.logger.debug("  DB Manager Get Option data.  ")
@@ -233,13 +266,12 @@ class rrDbManager:
                             StockData.stock == stock.ticker).order_by(StockData.id.desc()).get().strike)
                         stockPrice = float(StockData.select(StockData.price).where(
                             StockData.stock == stock.ticker).order_by(StockData.id.desc()).get().price)
-                        self.log.logger.debug("  DB Manager Attempting to retreive data for option " +
-                                              stock.ticker+" month "+str(month)+" at strike:"+str(strike))
-                        dataFetcher = optFetcher(
-                            stock.ticker).getData(month, strike)
+                        self.log.logger.info("  DB Manager Attempting to retreive data for option " +
+                                             stock.ticker+" month "+str(month)+" at strike:"+str(strike))
+                        dataFetcher = optFetcher(stock.ticker).getData(month, strike)
                         self.log.logger.debug(dataFetcher)
                         if len(dataFetcher.index) > 0:
-                            self.log.logger.debug(
+                            self.log.logger.info(
                                 "  DB Manager Data retreived for option "+stock.ticker+" month "+str(month))
                             # calculate option data pricing and kpi's
                             # rpotential
@@ -313,13 +345,21 @@ class rrDbManager:
                             "  DB Manager Error failed to fetch data.  Possibly no Stock Data loaded.")
                         month = month+1
         except Exception:
+            self.log.logger.error("  DB Manager error fetching data." +
+                                  str(Exception.with_traceback))
             self.log.logger.error(
                 "  DB Manager Error failed to fetch data.  Please check internet connectivity or yahoo.com for availability.  Using cached verssion.")
             return False
+        db.close()
         return True
 
     def saveProspect(self, stock, strike, expireDate, price, contracts, stockOwnership,
                      rPotential, kpi, color):
+        try:
+            db.connect()
+        except Exception:
+            self.log.logger.error(" DB already opened ")
+            return False
         try:
             ProspectData.create_table()
             today = datetime.datetime.today()
@@ -342,12 +382,12 @@ class rrDbManager:
             ProspectData.insert(row).on_conflict(conflict_target=[ProspectData.stock, ProspectData.strike, ProspectData.expireDate],
                                                  update={ProspectData.currentPrice: price}).execute()
         except Exception:
-            self.log.logger(
+            self.log.logger.error(
                 "  DB Manager error saving prospect." + Exception.with_traceback)
+        db.close()
         return True
 
 # Stock entity
-# Stocks to initiate with: SHOP, SQ, NVDA, BABA, TTD, NFLX, HUBS, SPLK, TEAM, CRM, WDAY, PYPL, VMW, NTNX, CGC, DATA
 
 
 class Stock(pw.Model):
