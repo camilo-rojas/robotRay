@@ -31,7 +31,7 @@ class StockDataFetcher():
         df = pd.DataFrame(stock.TickerFundament().items(), columns=['key', 'value'])
         pd.set_option("display.max_rows", None, "display.max_columns", None)
         self.log.logger.debug("   Values loaded: \n"+str(df))
-        self.log.logger.info(
+        self.log.logger.debug(
             "    DONE - Stock Data Fetcher "+str(self.symbol))
         return df
 
@@ -46,7 +46,7 @@ class StockDataFetcher():
                         '%Volume':
                         float(stock.TickerFundament().get('Rel Volume'))}, ignore_index=True)
         self.log.logger.debug("   Values loaded: \n"+str(df))
-        self.log.logger.info(
+        self.log.logger.debug(
             "    DONE - Stock Intraday Data Fetcher "+str(self.symbol))
         return df
 

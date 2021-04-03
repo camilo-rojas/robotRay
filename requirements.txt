@@ -6,3 +6,4 @@ configparser
 schedule
 requests
 finvizfinance
+tqdm

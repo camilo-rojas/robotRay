@@ -7,6 +7,7 @@ import datetime
 import sys
 import os
 import time
+from tqdm import tqdm
 
 """
 Created on 07 05 2019
@@ -91,7 +92,7 @@ class rrDbManager:
         self.log.logger.debug("  DB Manager Get Stock data.  ")
         StockData.create_table()
         try:
-            for stock in Stock.select():
+            for stock in tqdm(Stock.select(), desc="Getting Stock Data:", unit="Stock", ascii=False, ncols=120, leave=False):
                 time.sleep(randint(2, 5))
                 self.log.logger.debug(
                     "  DB Manager Attempting to retreive data for "+stock.ticker)
@@ -137,6 +138,9 @@ class rrDbManager:
                     StockData.insert(row).execute()
                     self.log.logger.debug(
                         "  DB Manager Data retreived for "+stock.ticker)
+                    tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                               + " - rrLog - " +
+                               "INFO -     DONE - Data retreived for "+stock.ticker)
                 except Exception:
                     self.log.logger.error(
                         "  DB Manager Error failed to fetch data for:"+stock.ticker)
@@ -159,7 +163,7 @@ class rrDbManager:
         from rrlib.rrDataFetcher import StockDataFetcher as stckFetcher
         IntradayStockData.create_table()
         try:
-            for stock in Stock.select():
+            for stock in tqdm(Stock.select(), desc="Getting Stock Data:", unit="Stock", ascii=False, ncols=120, leave=False):
                 time.sleep(randint(2, 5))
                 self.log.logger.debug(
                     "  DB Manager Attempting to retreive intraday data for "+stock.ticker)
@@ -185,6 +189,9 @@ class rrDbManager:
                         IntradayStockData.price: dataFetcher.iloc[0]['price'], IntradayStockData.pctChange: pctChange,
                         IntradayStockData.pctVol: dataFetcher.iloc[0]['%Volume'], IntradayStockData.timestamp: str(datetime.datetime.now()),
                         IntradayStockData.kpi: kpi}).execute()
+                    tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                               + " - rrLog - " +
+                               "INFO -     DONE - Stock intraday data retreived for "+stock.ticker)
                     self.log.logger.debug(
                         "  DB Manager intraday data retreived for "+stock.ticker)
                 except Exception:
@@ -256,7 +263,7 @@ class rrDbManager:
         strike = 150
         OptionData.create_table()
         try:
-            for stock in Stock.select():
+            for stock in tqdm(Stock.select(), desc="Getting Option Data:", unit="Stock", ascii=False, ncols=120, leave=False):
                 month = 3
                 time.sleep(randint(2, 5))
                 self.log.logger.debug(stock.ticker)
@@ -268,8 +275,8 @@ class rrDbManager:
                             StockData.stock == stock.ticker).order_by(StockData.id.desc()).get().strike)
                         stockPrice = float(StockData.select(StockData.price).where(
                             StockData.stock == stock.ticker).order_by(StockData.id.desc()).get().price)
-                        self.log.logger.info("  DB Manager Attempting to retreive data for option " +
-                                             stock.ticker+" month "+str(month)+" at strike:"+str(strike))
+                        self.log.logger.debug("  DB Manager Attempting to retreive data for option " +
+                                              stock.ticker+" month "+str(month)+" at strike:"+str(strike))
                         dataFetcher = optFetcher(stock.ticker).getData(month, strike)
                         self.log.logger.debug(dataFetcher)
                         if len(dataFetcher.index) > 0:
@@ -279,7 +286,6 @@ class rrDbManager:
                             # rpotential
                             import configparser
                             import calendar
-                            import datetime
                             config = configparser.ConfigParser()
                             config.read("rrlib/robotRay.ini")
                             R = int(config['thinker']['R'])
@@ -288,7 +294,10 @@ class rrDbManager:
                             if price < float(dataFetcher.iloc[2]['value']) or price > float(dataFetcher.iloc[3]['value']):
                                 price = (float(dataFetcher.iloc[2]['value']) +
                                          float(dataFetcher.iloc[3]['value']))/2
-                            contracts = round(2*R/(50*price))
+                            if price > 0:
+                                contracts = round(2*R/(50*price))
+                            else:
+                                contracts = 0
                             # calculate worst case on stock ownership
                             stockOwnership = contracts*strike*100-price*100
                             # calculate BP withheld to match
@@ -333,19 +342,32 @@ class rrDbManager:
                                                                        OptionData.volume: dataFetcher.iloc[8]['value'],
                                                                        OptionData.openInterest: dataFetcher.iloc[9]['value'],
                                                                        OptionData.timestamp: datetime.datetime.now(),
-                                                                       OptionData.contracts: str(contracts), OptionData.stockOwnership: str(stockOwnership),
+                                                                       OptionData.contracts: str(contracts),
+                                                                       OptionData.stockOwnership: str(stockOwnership),
                                                                        OptionData.withheldBP: str(withheldBP), OptionData.Rpotential: str(Rpotential),
-                                                                       OptionData.kpi: str(kpi), OptionData.expectedPremium: str(expectedPremium)}).execute()
-                            self.log.logger.info("    DONE - Option data loaded: " +
-                                                 stock.ticker+" for month "+str(month))
+                                                                       OptionData.kpi: str(kpi),
+                                                                       OptionData.expectedPremium: str(expectedPremium)}).execute()
+                            now = datetime.datetime.now()
+                            tqdm.write(str(now.strftime(
+                                '%Y-%m-%d %H:%M:%S.%f')[:-3])
+                                + " - rrLog - INFO -     DONE - Option data loaded for "+stock.ticker+" for month "+str(month))
+                            self.log.logger.debug("    DONE - Option data loaded: " +
+                                                  stock.ticker+" for month "+str(month))
                         else:
-                            self.log.logger.info(
+                            self.log.logger.debug(
                                 "    NOT FOUND - No Option for this month")
+                            now = datetime.datetime.now()
+                            tqdm.write(str(now.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                                       + " - rrLog - INFO -     NOT FOUND - No option for "+stock.ticker+" for month "+str(month))
 
                         month = month+1
-                    except Exception:
+                    except Exception as e:
+                        exc_type, exc_obj, exc_tb = sys.exc_info()
+                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                        self.log.logger.error(exc_type, fname, exc_tb.tb_lineno)
                         self.log.logger.warning(
                             "  DB Manager Error failed to fetch data.  Possibly no Stock Data loaded. Or several process running at the same time")
+                        self.log.logger.warning(e)
                         month = month+1
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -357,7 +379,7 @@ class rrDbManager:
                 "  DB Manager Error failed to fetch data.  Please check internet connectivity or yahoo.com for availability.  Using cached verssion.")
             return False
 
-        self.log.logger.info("  closing db.  ")
+        # self.log.logger.info("  closing db.  ")
         # db.close()
         return True
 

@@ -92,6 +92,7 @@ class server():
     def getStockData(self):
         self.log.logger.info("10. Getting stock data, daily process ")
         if self.isworkday():
+            # if True:
             try:
                 self.db.getStockData()
                 self.log.logger.info(
@@ -103,6 +104,7 @@ class server():
     def getOptionData(self):
         self.log.logger.info("20. Getting Option Data")
         if self.isworkday():
+            # if True:
             try:
                 self.db.getOptionData()
                 self.log.logger.info(
@@ -114,6 +116,7 @@ class server():
     def getIntradayData(self):
         self.log.logger.info("30. Getting Intraday Data")
         self.runCycle = self.runCycle + 1
+        # if True:
         if self.isworkday():
             try:
                 self.db.getIntradayData()
