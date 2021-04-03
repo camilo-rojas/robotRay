@@ -81,6 +81,27 @@ class rrDbManager:
         # db.close()
         return df
 
+    def printStocks(self):
+        df = pd.DataFrame(list(StockData.select(StockData.stock, StockData.price, StockData.prevClose,
+                                                StockData.perfDay, StockData.strike, StockData.salesqq,
+                                                StockData.sales5y, StockData.earnDate, StockData.targetPrice,
+                                                StockData.perfMonth, StockData.perfQuarter, StockData.perfYTD,
+                                                StockData.perfYear).order_by(StockData.timestamp.desc()).dicts()))
+        return df.head(len(self.getStocks().index))
+
+    def printIntradayStocks(self):
+        df = pd.DataFrame(list(IntradayStockData.select(IntradayStockData.stock, IntradayStockData.price,
+                                                        IntradayStockData.pctChange, IntradayStockData.pctVol,
+                                                        IntradayStockData.kpi).order_by(IntradayStockData.kpi.desc()).dicts()))
+        return df
+
+    def printOptions(self):
+        df = pd.DataFrame(list(OptionData.select().where(
+            # OptionData.kpi > 0 &
+            OptionData.timestamp > (datetime.datetime.now()-datetime.timedelta(days=4)))
+            .order_by(OptionData.kpi.desc()).dicts()))
+        return df
+
     def getStockData(self):
         # try:
         #    db.connect()
@@ -170,21 +191,23 @@ class rrDbManager:
                 try:
                     dataFetcher = stckFetcher(stock.ticker).getIntradayData()
                     # Calculate kpi
-                    pctChange = float(dataFetcher.iloc[0]['%Change'])
+                    pctChange = round(float(dataFetcher.iloc[0]['%Change']), 3)
                     try:
                         higherOptionData = float(OptionData.select(OptionData.kpi).where(
-                            OptionData.stock == stock.ticker).order_by(OptionData.kpi.desc()).get().kpi)
+                            (OptionData.stock == stock.ticker) &
+                            (OptionData.timestamp > (datetime.datetime.now()-datetime.timedelta(days=4))))
+                            .order_by(OptionData.kpi.desc()).get().kpi)
                     except Exception:
                         higherOptionData = 0
                     salesQtQ = float((StockData.select(StockData.salesqq).where(
                         StockData.stock == stock.ticker).order_by(StockData.id.desc()).get().salesqq).strip('%'))/100
                     sma200 = float((StockData.select(StockData.sma200).where(
                         StockData.stock == stock.ticker).order_by(StockData.id.desc()).get().sma200).strip('%'))/100
-                    kpi = -22*pctChange*0.5+0.1*higherOptionData + \
-                        salesQtQ*0.3+sma200*0.1+0.1*2*salesQtQ
+                    kpi = round(-22*pctChange*0.5+0.1*higherOptionData +
+                                salesQtQ*0.3+sma200*0.1+0.1*2*salesQtQ, 3)
                     row = {'stock': stock.ticker, 'price': dataFetcher.iloc[0]['price'], 'pctChange': pctChange,
                            'pctVol': dataFetcher.iloc[0]['%Volume'], 'timestamp': str(datetime.datetime.now()), 'kpi': kpi}
-                    #  self.log.logger.info("  DB Manager Built row:"+str(row))
+                    # self.log.logger.info("  DB Manager Built row:"+str(row))
                     IntradayStockData.insert(row).on_conflict(conflict_target=[IntradayStockData.stock], update={
                         IntradayStockData.price: dataFetcher.iloc[0]['price'], IntradayStockData.pctChange: pctChange,
                         IntradayStockData.pctVol: dataFetcher.iloc[0]['%Volume'], IntradayStockData.timestamp: str(datetime.datetime.now()),
@@ -267,6 +290,10 @@ class rrDbManager:
                 month = 3
                 time.sleep(randint(2, 5))
                 self.log.logger.debug(stock.ticker)
+                mbar = tqdm(total=6, desc="Getting Month Data: ",
+                            unit="Month", ascii=False, ncols=120, leave=False)
+                tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                           + " - rrLog - INFO -   Retreving option data for "+stock.ticker)
                 while month < 9:
                     try:
                         # get strike info from stock data
@@ -324,14 +351,16 @@ class rrDbManager:
                             kpi = kpi-0.1*(stockOwnership/BP)
                             if EdateMonth % 3 == (datetime.datetime.now().month+month) % 3:
                                 kpi = 0
-                            row = {'stock': stock.ticker, 'strike': str(strike), 'price': price,
+                            row = {'stock': stock.ticker, 'strike': str(strike), 'price': round(price, 3),
                                    'expireDate': datetime.datetime.strptime(dataFetcher.iloc[5]['value'], '%Y-%m-%d'),
                                    'openPrice': dataFetcher.iloc[1]['value'],
                                    "bid": dataFetcher.iloc[2]['value'], "ask": dataFetcher.iloc[3]['value'],
                                    "dayRange": dataFetcher.iloc[6]['value'], "volume": dataFetcher.iloc[8]['value'],
                                    "openInterest": dataFetcher.iloc[9]['value'], 'timestamp': datetime.datetime.now(),
-                                   'contracts': str(contracts), 'stockOwnership': str(stockOwnership), 'withheldBP': str(withheldBP),
-                                   'Rpotential': str(Rpotential), 'kpi': str(kpi), 'expectedPremium': str(expectedPremium)}
+                                   'contracts': str(contracts), 'stockOwnership': str(round(stockOwnership, 3)),
+                                   'withheldBP': str(round(withheldBP, 3)),
+                                   'Rpotential': str(round(Rpotential, 3)), 'kpi': str(round(kpi, 3)),
+                                   'expectedPremium': str(round(expectedPremium, 3))}
                             self.log.logger.debug(
                                 "  DB Manager Built row: strike="+str(strike)+" row:"+str(row))
                             OptionData.insert(row).on_conflict(conflict_target=[OptionData.stock, OptionData.expireDate, OptionData.strike],
@@ -347,8 +376,7 @@ class rrDbManager:
                                                                        OptionData.withheldBP: str(withheldBP), OptionData.Rpotential: str(Rpotential),
                                                                        OptionData.kpi: str(kpi),
                                                                        OptionData.expectedPremium: str(expectedPremium)}).execute()
-                            now = datetime.datetime.now()
-                            tqdm.write(str(now.strftime(
+                            tqdm.write(str(datetime.datetime.now().strftime(
                                 '%Y-%m-%d %H:%M:%S.%f')[:-3])
                                 + " - rrLog - INFO -     DONE - Option data loaded for "+stock.ticker+" for month "+str(month))
                             self.log.logger.debug("    DONE - Option data loaded: " +
@@ -356,11 +384,11 @@ class rrDbManager:
                         else:
                             self.log.logger.debug(
                                 "    NOT FOUND - No Option for this month")
-                            now = datetime.datetime.now()
-                            tqdm.write(str(now.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                            tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
                                        + " - rrLog - INFO -     NOT FOUND - No option for "+stock.ticker+" for month "+str(month))
 
                         month = month+1
+                        mbar.update(1)
                     except Exception as e:
                         exc_type, exc_obj, exc_tb = sys.exc_info()
                         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -369,6 +397,7 @@ class rrDbManager:
                             "  DB Manager Error failed to fetch data.  Possibly no Stock Data loaded. Or several process running at the same time")
                         self.log.logger.warning(e)
                         month = month+1
+                mbar.close()
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]

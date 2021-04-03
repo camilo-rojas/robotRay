@@ -186,13 +186,20 @@ class server():
                         self.shutdown()
                 elif(command == "help"):
                     self.log.logger.info(
-                        "995 - General Commands: help, clear, jobs, isdbinuse, quit, exit, intro, about")
+                        "995 - General Commands: help, clear, status, jobs, isdbinuse, quit, exit, intro, about")
+                    self.log.logger.info(
+                        "================================================================")
                     self.log.logger.info(
                         "995 - The following are scheduled automatically, run only for override")
                     self.log.logger.info(
-                        "995 - Stock Data manual commands: getstockdata, getintradaydata, think")
+                        "995 - Stock Data refresh manual commands: getstockdata, getintradaydata")
                     self.log.logger.info(
-                        "995 - Option Data manual commands: getoptiondata")
+                        "995 - Option Data refresh manual commands: getoptiondata")
+                    self.log.logger.info(
+                        "================================================================")
+                    self.log.logger.info(
+                        "995 - Stock Data info commands: printstocks, printintra")
+                    self.log.logger.info("995 - Option Data info commands: printoptions")
                     self.log.logger.info(
                         "995 - Run prospect info: getprospects, sendprospects")
                 elif(command == "clear"):
@@ -209,6 +216,15 @@ class server():
                         self.log.logger.info("994 - DB is currently: Not used by any thread")
                     else:
                         self.log.logger.info("994 - DB is currently: In Use by thread")
+                elif (command == "printstocks"):
+                    self.log.logger.info("550 - Stocks being tracked:")
+                    print(self.db.printStocks())
+                elif (command == "printintra"):
+                    self.log.logger.info("550 - Stocks current intraday data:")
+                    print(self.db.printIntradayStocks())
+                elif (command == "printoptions"):
+                    self.log.logger.info("550 - Options data:")
+                    print(self.db.printOptions())
                 elif(command == "getprospects"):
                     self.log.logger.info("130 - Getting prospects (soon)")
                 elif(command == "sendprospects"):
