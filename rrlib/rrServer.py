@@ -15,6 +15,7 @@ import schedule
 import time
 import sys
 import os
+import datetime
 
 
 # To do's
@@ -38,17 +39,27 @@ class server():
         self.threads = []
         self.running = True
         self.log.logger.info("Initialization finished robotRay server")
+        self.startupTime = datetime.datetime.now()
+        self.stockDataUpdateTime = datetime.datetime.now()
+        self.optionDataUpdateTime = datetime.datetime.now()
+        self.thinkUpdateTime = datetime.datetime.now()
 
     def intro(self):
         self.log = logger()
         self.log.logger.info("")
         self.log.logger.info(
-            "-----------------------------------------------")
+            "-----------------------------------------------------------------")
+        self.log.logger.info("    ____          __            __   ____               ")
+        self.log.logger.info("   / __ \ ____   / /_   ____   / /_ / __ \ ____ _ __  __")
+        self.log.logger.info("  / /_/ // __ \ / __ \ / __ \ / __// /_/ // __ `// / / /")
+        self.log.logger.info(" / _, _// /_/ // /_/ // /_/ // /_ / _, _// /_/ // /_/ / ")
+        self.log.logger.info("/_/ |_| \____//_.___/ \____/ \__//_/ |_| \__,_/ \__, /  ")
+        self.log.logger.info("                                               /____/   ")
         self.log.logger.info("robotRay v1.0 - by Camilo Rojas - Jun 8 2019")
         self.log.logger.info(
             "Copyright Camilo Rojas - camilo.rojas@gmail.com")
         self.log.logger.info(
-            "-----------------------------------------------")
+            "-----------------------------------------------------------------  ")
         self.log.logger.info("")
 
     def startup(self):
@@ -79,12 +90,13 @@ class server():
         self.log.logger.info("")
 
     def getStockData(self):
-        self.log.logger.info("10. Getting stock data, hourly process ")
+        self.log.logger.info("10. Getting stock data, daily process ")
         if self.isworkday():
             try:
                 self.db.getStockData()
                 self.log.logger.info(
                     "10. DONE - Stock data fetched")
+                self.stockDataUpdateTime = datetime.datetime.now()
             except Exception:
                 self.log.logger.error("10. Error fetching daily stock data")
 
@@ -95,6 +107,7 @@ class server():
                 self.db.getOptionData()
                 self.log.logger.info(
                     "20. DONE - Option data successfully fetched")
+                self.optionDataUpdateTime = datetime.datetime.now()
             except Exception:
                 self.log.logger.error("20. Error fetching daily option data")
 
@@ -106,9 +119,8 @@ class server():
                 self.db.getIntradayData()
                 self.log.logger.info(
                     "30. DONE - Intraday data successfully fetched")
+                self.stockDataUpdateTime = datetime.datetime.now()
                 # run option data fetchers every three iterations
-                if self.runCycle % 3 == 0:
-                    self.getOptionData()
                 self.think()
             except Exception:
                 self.log.logger.error("30. Error fetching Intraday data")
@@ -119,6 +131,7 @@ class server():
         if self.isworkday():
             try:
                 self.thinker = thinker()
+                self.thinkUpdateTime = datetime.datetime.now()
                 self.log.logger.info(
                     "     110. Evaluating daily drops and pricing opptys for elegible stocks")
                 self.thinker.evaluateProspects()
@@ -126,10 +139,10 @@ class server():
                     "     120. Updating pricing for existing prospects")
                 self.thinker.updatePricingProspects()
                 self.log.logger.info(
-                    "     130. Communicating prospects to Camilor")
+                    "     130. Communicating prospects")
                 self.thinker.communicateProspects()
                 self.log.logger.info(
-                    "     140. Communicating closings to Camilor")
+                    "     140. Communicating closings")
                 self.thinker.communicateClosing()
                 self.log.logger.info("100. DONE - Finished thinking")
             except Exception:
@@ -137,7 +150,7 @@ class server():
 
     def sendReport(self):
         self.log.logger.info(
-            "200. Sending report to Camilor")
+            "200. Sending report to IFTTT")
         if self.isworkday():
             try:
                 self.thinker = thinker()
@@ -151,8 +164,9 @@ class server():
         # self.log.logger.info("99. Testing")
 
     def scheduler(self):
-        schedule.every(1).hours.do(self.run_threaded, self.getStockData)
-        schedule.every(5).minutes.do(self.run_threaded, self.getIntradayData)
+        schedule.every(4).hours.do(self.run_threaded, self.getStockData)
+        schedule.every(10).minutes.do(self.run_threaded, self.getIntradayData)
+        schedule.every(22).minutes.do(self.run_threaded, self.getOptionData)
         schedule.every().day.at("19:50").do(self.run_threaded, self.sendReport)
 #        schedule.every(3).minutes.do(self.run_threaded, self.think) moved to intraday fetcher due to conflicts in io
 
@@ -196,13 +210,29 @@ class server():
                     self.log.logger.info("130 - Getting prospects (soon)")
                 elif(command == "sendprospects"):
                     self.log.logger.info("140 - Sending prospects (soon)")
+                elif(command == "getstocks"):
+                    self.log.logger.info("550 - Stocks being tracked:")
                 elif(command == "status"):
                     self.log.logger.info(
-                        "500 - Status report RobotRay. Running for X minutes. Currently running on "+str(threading.active_count())+" threads.")
+                        "500 - Status report RobotRay. Startup at:"+self.startupTime.strftime("%Y-%m-%d %H:%M:%S"))
                     self.log.logger.info(
-                        "500 - Last stock data update: XXX, Last option data update: XXX")
+                        "500 - Running time: "+str(datetime.datetime.now()-self.startupTime) +
+                        ". Currently running on "+str(threading.active_count())+" threads.")
+                    self.log.logger.info(
+                        "500 - Last stock data update: " +
+                        str(self.stockDataUpdateTime) +
+                        ", "+str(datetime.datetime.now()
+                                 - self.stockDataUpdateTime)+" has passed since last run")
+                    self.log.logger.info("500 - Last option data update: " +
+                                         str(self.optionDataUpdateTime)+", " +
+                                         str(datetime.datetime.now()-self.optionDataUpdateTime) +
+                                         " has passed since last run")
+                    self.log.logger.info("500 - Last think process: "+str(self.thinkUpdateTime)
+                                         + ", " +
+                                         str(datetime.datetime.now() - self.thinkUpdateTime) +
+                                         " has passed since last run")
                     self.log.logger.info("500 - Currently getting data from: Finviz + Yahoo")
-                    self.log.logger.info("500 - Last think process: XXX")
+                    self.log.logger.info("500 - Run cycle #: "+str(self.runCycle))
                 elif(command == "getstockdata"):
                     self.log.logger.info(
                         "10 - This will take a couple of minutes, please don't cancel")
@@ -250,6 +280,7 @@ class server():
                                                           (datetime.datetime.now().time() < datetime.time(20, 00))):
             return True
         else:
+            self.log.logger.info("998. - Market closed or not a working day")
             return False
 
 # Exit signal management from server handler

@@ -53,7 +53,7 @@ class rrDbManager:
             status = db.connect()
         except Exception:
             status = False
-        db.close()
+        # db.close()
         return status
 
     def initializeStocks(self):
@@ -67,7 +67,7 @@ class rrDbManager:
             stocks.append({'ticker': st})
         self.log.logger.debug(stocks)
         Stock.insert_many(stocks).execute()
-        db.close()
+        # db.close()
 
     def getStocks(self):
         df = pd.DataFrame(columns=['ticker'])
@@ -77,15 +77,15 @@ class rrDbManager:
         except Exception:
             self.log.logger.error(
                 "  DB Manager Error. Get Stock Table without table, try initializing.  ")
-        db.close()
+        # db.close()
         return df
 
     def getStockData(self):
-        try:
-            db.connect()
-        except Exception:
-            self.log.logger.error(" DB already opened ")
-            return False
+        # try:
+        #    db.connect()
+        # except Exception:
+        #    self.log.logger.warning(" DB already opened ")
+        #    return False
         from rrlib.rrDataFetcher import StockDataFetcher as stckFetcher
         from random import randint
         self.log.logger.debug("  DB Manager Get Stock data.  ")
@@ -145,15 +145,15 @@ class rrDbManager:
                 "  DB Manager Error failed to fetch data.  Please check internet connectivity or finviz.com for availability."
                 "  Using cached version.")
             return False
-        db.close()
+        # db.close()
         return True
 
     def getIntradayData(self):
-        try:
-            db.connect()
-        except Exception:
-            self.log.logger.error(" DB already opened ")
-            return False
+        # try:
+        #    db.connect()
+        # except Exception:
+        #    self.log.logger.warning(" DB already opened ")
+        #    return False
         from random import randint
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
         from rrlib.rrDataFetcher import StockDataFetcher as stckFetcher
@@ -188,14 +188,14 @@ class rrDbManager:
                     self.log.logger.debug(
                         "  DB Manager intraday data retreived for "+stock.ticker)
                 except Exception:
-                    self.log.logger.error(
-                        "  DB Manager Error failed to fetch intraday data for:"+stock.ticker)
+                    self.log.logger.warning(
+                        "  DB Manager Error failed to fetch intraday data for:"+stock.ticker+". Or several process running at the same time")
         except Exception:
             self.log.logger.error(
                 "  DB Manager Error failed to fetch intraday data.  Please check internet connectivity "
                 "or yahoo.com for availability.  Using cached verssion.")
             return False
-        db.close()
+        # db.close()
         return True
 
     def initializeExpirationDate(self):
@@ -227,7 +227,7 @@ class rrDbManager:
             ExpirationDate.insert(
                 {'date': third_friday(2, 4, month, year)}).execute()
             x = x+1
-        db.close()
+        # db.close()
 
     def completeExpirationDate(self, monthYear):
         completeDate = ""
@@ -240,18 +240,18 @@ class rrDbManager:
             self.log.logger.error(
                 "    Error completing expiration date "+monthYear)
             return False
-        db.close()
+        # db.close()
         return completeDate
 
     def getOptionData(self):
-        try:
-            db.connect()
-        except Exception:
-            self.log.logger.error(" DB already opened ")
-            return False
+        # try:
+        #    db.connect()
+        # except Exception:
+        #    self.log.logger.warning(" DB already opened ")
+        #    return False
         from rrlib.rrDataFetcher import OptionDataFetcher as optFetcher
         from random import randint
-        self.log.logger.debug("  DB Manager Get Option data.  ")
+        self.log.logger.info("  DB Manager Get Option data.  ")
         month = 3
         strike = 150
         OptionData.create_table()
@@ -259,9 +259,11 @@ class rrDbManager:
             for stock in Stock.select():
                 month = 3
                 time.sleep(randint(2, 5))
+                self.log.logger.debug(stock.ticker)
                 while month < 9:
                     try:
                         # get strike info from stock data
+                        self.log.logger.debug(str(month))
                         strike = int(StockData.select(StockData.strike).where(
                             StockData.stock == stock.ticker).order_by(StockData.id.desc()).get().strike)
                         stockPrice = float(StockData.select(StockData.price).where(
@@ -271,7 +273,7 @@ class rrDbManager:
                         dataFetcher = optFetcher(stock.ticker).getData(month, strike)
                         self.log.logger.debug(dataFetcher)
                         if len(dataFetcher.index) > 0:
-                            self.log.logger.info(
+                            self.log.logger.debug(
                                 "  DB Manager Data retreived for option "+stock.ticker+" month "+str(month))
                             # calculate option data pricing and kpi's
                             # rpotential
@@ -337,29 +339,35 @@ class rrDbManager:
                             self.log.logger.info("    DONE - Option data loaded: " +
                                                  stock.ticker+" for month "+str(month))
                         else:
-                            self.log.logger.debug(
-                                "    No info for Option, not elegible")
+                            self.log.logger.info(
+                                "    NOT FOUND - No Option for this month")
+
                         month = month+1
                     except Exception:
-                        self.log.logger.error(
-                            "  DB Manager Error failed to fetch data.  Possibly no Stock Data loaded.")
+                        self.log.logger.warning(
+                            "  DB Manager Error failed to fetch data.  Possibly no Stock Data loaded. Or several process running at the same time")
                         month = month+1
-        except Exception:
-            self.log.logger.error("  DB Manager error fetching data." +
-                                  str(Exception.with_traceback))
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            self.log.logger.error(exc_type, fname, exc_tb.tb_lineno)
+            self.log.logger.error("  DB Manager error." +
+                                  str(e))
             self.log.logger.error(
                 "  DB Manager Error failed to fetch data.  Please check internet connectivity or yahoo.com for availability.  Using cached verssion.")
             return False
-        db.close()
+
+        self.log.logger.info("  closing db.  ")
+        # db.close()
         return True
 
     def saveProspect(self, stock, strike, expireDate, price, contracts, stockOwnership,
                      rPotential, kpi, color):
-        try:
-            db.connect()
-        except Exception:
-            self.log.logger.error(" DB already opened ")
-            return False
+        # try:
+        #    db.connect()
+        # except Exception:
+        #    self.log.logger.error(" DB already opened ")
+        #    return False
         try:
             ProspectData.create_table()
             today = datetime.datetime.today()
@@ -384,7 +392,7 @@ class rrDbManager:
         except Exception:
             self.log.logger.error(
                 "  DB Manager error saving prospect." + Exception.with_traceback)
-        db.close()
+        # db.close()
         return True
 
 # Stock entity
