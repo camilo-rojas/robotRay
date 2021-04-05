@@ -1,3 +1,4 @@
+env.sh
 config.py
 rrlib/__pycache__/
 rrlib/robotRay.ini

@@ -43,6 +43,7 @@ class server():
         self.stockDataUpdateTime = datetime.datetime.now()
         self.optionDataUpdateTime = datetime.datetime.now()
         self.thinkUpdateTime = datetime.datetime.now()
+        self.dbFilename = ""
 
     def intro(self):
         self.log = logger()
@@ -64,14 +65,26 @@ class server():
 
     def startup(self):
         self.log.logger.info("-- Startup robotRay server")
-        self.log.logger.info(
-            "00. Confirming sqllite db buildup and integrity")
-        # add logic to read .ini file and save it somewhere
-        self.log.logger.info(
-            "00. DONE - Confirming sqllite db buildup and integrity")
+        # find .ini db filename
+        import configparser
+        config = configparser.ConfigParser()
+        config.read("rrlib/robotRay.ini")
+        self.dbFilename = config.get('DB', 'filename')
+        # confirm if the file exists
+        self.db = rrDbManager()
+        if os.path.isfile(self.dbFilename):
+            self.log.logger.info(
+                "00. RobotRay DB found")
+            self.db.initializeDb()
+        else:
+            # if the file doesn't exist build tables
+            self.log.logger.warning(
+                "00. RobotRay DB not found")
+            self.db.initializeDb()
+            self.log.logger.info(
+                "00. RobotRay DB created and tables built")
         self.log.logger.info(
             "01. Building db elegible stocks for Option scanning")
-        self.db = rrDbManager()
         self.db.initializeStocks()
         self.log.logger.info(
             "01. DONE - Building db elegible stocks for Option scanning")
@@ -91,15 +104,16 @@ class server():
 
     def getStockData(self):
         self.log.logger.info("10. Getting stock data, daily process ")
-        if self.isworkday():
+        if not self.isworkday():
             # if True:
             try:
                 self.db.getStockData()
                 self.log.logger.info(
                     "10. DONE - Stock data fetched")
                 self.stockDataUpdateTime = datetime.datetime.now()
-            except Exception:
+            except Exception as e:
                 self.log.logger.error("10. Error fetching daily stock data")
+                self.log.logger.error(e)
 
     def getOptionData(self):
         self.log.logger.info("20. Getting Option Data")
@@ -110,8 +124,9 @@ class server():
                 self.log.logger.info(
                     "20. DONE - Option data successfully fetched")
                 self.optionDataUpdateTime = datetime.datetime.now()
-            except Exception:
+            except Exception as e:
                 self.log.logger.error("20. Error fetching daily option data")
+                self.log.logger.error(e)
 
     def getIntradayData(self):
         self.log.logger.info("30. Getting Intraday Data")
@@ -125,8 +140,9 @@ class server():
                 self.stockDataUpdateTime = datetime.datetime.now()
                 # run option data fetchers every three iterations
                 self.think()
-            except Exception:
+            except Exception as e:
                 self.log.logger.error("30. Error fetching Intraday data")
+                self.log.logger.error(e)
 
     def think(self):
         self.log.logger.info(
@@ -148,8 +164,9 @@ class server():
                     "     140. Communicating closings")
                 self.thinker.communicateClosing()
                 self.log.logger.info("100. DONE - Finished thinking")
-            except Exception:
+            except Exception as e:
                 self.log.logger.error("100. Error thinking")
+                self.log.logger.error(e)
 
     def sendReport(self):
         self.log.logger.info(
@@ -159,8 +176,9 @@ class server():
                 self.thinker = thinker()
                 self.thinker.sendDailyReport()
                 self.log.logger.info("200. DONE - Finished sending report")
-            except Exception:
+            except Exception as e:
                 self.log.logger.error("200. Error sending report")
+                self.log.logger.error(e)
 
     def testing(self):
         pass
@@ -181,27 +199,34 @@ class server():
                 if (command == "intro" or command == "about"):
                     self.intro()
                 elif(command == "quit" or command == "exit"):
-                    if input("\n998 - Really quit? (y/n)>").lower().startswith('y'):
+                    if input("\n998. Really quit? (y/n)>").lower().startswith('y'):
                         self.running = False
                         self.shutdown()
                 elif(command == "help"):
                     self.log.logger.info(
-                        "995 - General Commands: help, clear, status, jobs, isdbinuse, quit, exit, intro, about")
+                        "================================================================")
+                    self.log.logger.info(
+                        "RobotRay help menu - commands and manual override options")
+                    self.log.logger.info(
+                        "================================================================")
+                    self.log.logger.info("")
+                    self.log.logger.info(
+                        "995. General Commands: help, clear, status, jobs, isdbinuse, quit, exit, intro, about")
                     self.log.logger.info(
                         "================================================================")
                     self.log.logger.info(
-                        "995 - The following are scheduled automatically, run only for override")
+                        "995. The following are scheduled automatically, run only for override")
                     self.log.logger.info(
-                        "995 - Stock Data refresh manual commands: getstockdata, getintradaydata")
+                        "995. Stock Data refresh manual commands: getstockdata, getintradaydata")
                     self.log.logger.info(
-                        "995 - Option Data refresh manual commands: getoptiondata")
+                        "995. Option Data refresh manual commands: getoptiondata, think")
                     self.log.logger.info(
                         "================================================================")
                     self.log.logger.info(
-                        "995 - Stock Data info commands: printstocks, printintra")
+                        "995. Stock Data info commands: printstocks, printintra")
                     self.log.logger.info("995 - Option Data info commands: printoptions")
                     self.log.logger.info(
-                        "995 - Run prospect info: getprospects, sendprospects")
+                        "995. Run prospect info: getprospects, sendprospects")
                 elif(command == "clear"):
                     if sys.platform == 'win32':
                         os.system("cls")
@@ -209,57 +234,58 @@ class server():
                         os.system("clear")
                 elif(command == "getoptiondata"):
                     self.log.logger.info(
-                        "20 - This will take a couple of minutes, please don't cancel")
+                        "20. This will take a couple of minutes, please don't cancel")
                     self.getOptionData()
                 elif(command == "isdbinuse"):
                     if(self.db.isDbInUse()):
-                        self.log.logger.info("994 - DB is currently: Not used by any thread")
+                        self.log.logger.info("994. DB is currently: Not used by any thread")
                     else:
-                        self.log.logger.info("994 - DB is currently: In Use by thread")
+                        self.log.logger.info("994. DB is currently: In Use by thread")
                 elif (command == "printstocks"):
-                    self.log.logger.info("550 - Stocks being tracked:")
+                    self.log.logger.info("550. Stocks being tracked:")
                     print(self.db.printStocks())
                 elif (command == "printintra"):
-                    self.log.logger.info("550 - Stocks current intraday data:")
+                    self.log.logger.info("560. Stocks current intraday data:")
                     print(self.db.printIntradayStocks())
                 elif (command == "printoptions"):
-                    self.log.logger.info("550 - Options data:")
+                    self.log.logger.info("570. Options data:")
                     print(self.db.printOptions())
                 elif(command == "getprospects"):
-                    self.log.logger.info("130 - Getting prospects (soon)")
+                    self.log.logger.info("130. Getting prospects (soon)")
                 elif(command == "sendprospects"):
-                    self.log.logger.info("140 - Sending prospects (soon)")
-                elif(command == "getstocks"):
-                    self.log.logger.info("550 - Stocks being tracked:")
+                    self.log.logger.info("140. Sending prospects (soon)")
+                elif(command == "think"):
+                    self.log.logger.info("590. Launching thinker")
+                    self.think()
                 elif(command == "status"):
                     self.log.logger.info(
-                        "500 - Status report RobotRay. Startup at:"+self.startupTime.strftime("%Y-%m-%d %H:%M:%S"))
+                        "500. Status report RobotRay. Startup at:"+self.startupTime.strftime("%Y-%m-%d %H:%M:%S"))
                     self.log.logger.info(
-                        "500 - Running time: "+str(datetime.datetime.now()-self.startupTime) +
+                        "500. Running time: "+str(datetime.datetime.now()-self.startupTime) +
                         ". Currently running on "+str(threading.active_count())+" threads.")
                     self.log.logger.info(
-                        "500 - Last stock data update: " +
+                        "500. Last stock data update: " +
                         str(self.stockDataUpdateTime) +
                         ", "+str(datetime.datetime.now()
                                  - self.stockDataUpdateTime)+" has passed since last run")
-                    self.log.logger.info("500 - Last option data update: " +
+                    self.log.logger.info("500. Last option data update: " +
                                          str(self.optionDataUpdateTime)+", " +
                                          str(datetime.datetime.now()-self.optionDataUpdateTime) +
                                          " has passed since last run")
-                    self.log.logger.info("500 - Last think process: "+str(self.thinkUpdateTime)
+                    self.log.logger.info("500. Last think process: "+str(self.thinkUpdateTime)
                                          + ", " +
                                          str(datetime.datetime.now() - self.thinkUpdateTime) +
                                          " has passed since last run")
-                    self.log.logger.info("500 - Currently getting data from: Finviz + Yahoo")
-                    self.log.logger.info("500 - Run cycle #: "+str(self.runCycle))
+                    self.log.logger.info("500. Currently getting data from: Finviz + Yahoo")
+                    self.log.logger.info("500. Run cycle #: "+str(self.runCycle))
                 elif(command == "getstockdata"):
                     self.log.logger.info(
-                        "10 - This will take a couple of minutes, please don't cancel")
+                        "10. This will take a couple of minutes, please don't cancel")
                     self.getStockData()
                 elif(command == "getintradaydata"):
                     self.getIntradayData()
                 elif(command == "jobs"):
-                    self.log.logger.info("996 - Currently running: " +
+                    self.log.logger.info("996. Currently running: " +
                                          str(threading.active_count())+" threads.")
                     # for threadStatus in self.threads:
                     #    self.log.logger.info("996 - "+str(self.get_thread_info()))

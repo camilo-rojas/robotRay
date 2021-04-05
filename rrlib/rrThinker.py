@@ -25,6 +25,8 @@ Batch nature for evaluation of alerted positions
 """
 import sys
 import os
+import datetime
+from tqdm import tqdm
 
 
 class thinker:
@@ -61,10 +63,16 @@ class thinker:
         # Get option expected price flexiblity to ask limit
         self.ExpPrice2Ask = config['thinker']['ExpPrice2Ask']
         # print debug init parameters
-        self.log.logger.debug(
-            "     Thinker operational parameters: DPCGreen:" + self.dayPriceChgGreen
-            + ", DPCRed:" + self.dayPriceChgRed + ", MonthPrem:" + self.monthlyPremium
-            + ", SMAGreen:" + self.smaGreen + ", SMARed:" + self.smaRed + ", R:" + self.R)
+        self.log.logger.info(
+            "     105. Thinker operational parameters: Day Percentage Change for Green day:" +
+            str(float(self.dayPriceChgGreen)*100)
+            + "%, for Red Day:" + str(float(self.dayPriceChgRed)*100)+"%")
+        self.log.logger.info("     Monthly Expected Premium:" + str(float(self.monthlyPremium)*100)
+                             + "%, Simple Moving Average 200 for Green Day:" +
+                             str(float(self.smaGreen)*100) +
+                             "%, for Red Day:" + str(float(self.smaRed*100))+"%")
+        self.log.logger.info("     Available funds in portfolio: USD$" +
+                             str(float(self.R)/0.02)+", R (risk money per trade):USD$" + self.R)
 
     def evaluateProspects(self):
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -73,19 +81,24 @@ class thinker:
         from rrlib.rrDb import StockData
 
         try:
-            for stock in IntradayStockData.select():
-                self.log.logger.debug("     Thinker:" + str(float(stock.kpi)) + " "
-                                      + str(float(self.IntradayKPIGreen)) + " "
-                                      + str(float(stock.pctChange)))
+            for stock in tqdm(IntradayStockData.select(), desc="Getting KPI's of Stock Data:", unit="Stock", ascii=False, ncols=120, leave=False):
+                # tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                #           + " - rrLog - " +
+                #           "INFO -      Thinker:" + str(float(stock.kpi)) + " "
+                #           + str(float(self.IntradayKPIGreen)) + " "
+                #           + str(float(stock.pctChange))+" "+stock.stock)
                 # Find the strike price
                 strike = StockData.select(StockData.strike).where(
                     StockData.stock == stock.stock).get().strike
-                # print(str(stock.pctChange < self.dayPriceChgGreen) +
-                #      " "+str(stock.kpi > self.IntradayKPIGreen))
+                # tqdm.write("Green 1 and 2:"+str(float(stock.pctChange) < float(self.dayPriceChgGreen)) +
+                #           " "+str(float(stock.kpi) > float(self.IntradayKPIGreen)))
+                # tqdm.write("Yellow 1 and 2:"+str(float(stock.pctChange) < float(self.dayPriceChgRed)) +
+                #           " "+str(float(stock.kpi) > float(self.IntradayKPIGreen)))
                 # Green day decline
                 if float(stock.pctChange) < float(self.dayPriceChgGreen) and float(stock.kpi) > float(self.IntradayKPIGreen):
                     higherOptionData = OptionData.select().where(
-                        (OptionData.stock == stock.stock) & (OptionData.strike == strike)).order_by(OptionData.kpi.desc()).get()
+                        (OptionData.stock == stock.stock) & (OptionData.strike == strike) &
+                        (OptionData.timestamp > (datetime.datetime.now()-datetime.timedelta(days=4)))).order_by(OptionData.kpi.desc()).get()
                     if float(higherOptionData.price) > float(higherOptionData.expectedPremium):
                         price = higherOptionData.price
                     else:
@@ -104,7 +117,8 @@ class thinker:
                 # Yellow day decline
                 elif float(stock.pctChange) < float(self.dayPriceChgRed) and float(stock.kpi) > float(self.IntradayKPIGreen):
                     higherOptionData = OptionData.select().where(
-                        (OptionData.stock == stock.stock) & (OptionData.strike == strike)).order_by(OptionData.kpi.desc()).get()
+                        (OptionData.stock == stock.stock) & (OptionData.strike == strike) &
+                        (OptionData.timestamp > (datetime.datetime.now()-datetime.timedelta(days=4)))).order_by(OptionData.kpi.desc()).get()
                     if float(higherOptionData.price) > float(higherOptionData.expectedPremium):
                         price = higherOptionData.price
                     else:
@@ -119,9 +133,9 @@ class thinker:
                                                                     higherOptionData.Rpotential))
                         self.db.saveProspect(stock.stock, strike, higherOptionData.expireDate, price, higherOptionData.contracts,
                                              higherOptionData.stockOwnership, higherOptionData.Rpotential, kpi=higherOptionData.kpi, color="yellow")
-        except Exception:
-            self.log.logger.error(
-                "     Thinker evaluation error" + Exception.with_traceback)
+        except Exception as e:
+            self.log.logger.error("     Thinker evaluation error")
+            self.log.logger.error(e)
 
     def prospectFormatter(self, stock="STOCK", expireDate="YYYY-MM-DD", strike="100", price="1", contracts="1",
                           bid="1.1", ask="1.1", expectedPremium="1", Rpotential="1.1"):
@@ -134,9 +148,10 @@ class thinker:
                 str(round(float(expectedPremium), 2)) + " and RPotential is: " + str(round(float(Rpotential), 2))+"\n" + \
                 "     BTC when price reaches either Price: " + str(round(float(price)/2, 2)) + "\n" + \
                 "     --------------PROSPECT DETAILS-------------------\n"
-        except Exception:
+        except Exception as e:
             self.log.logger.error(
-                "     Thinker prospect formatter error" + Exception.with_traceback)
+                "     Thinker prospect formatter error")
+            self.log.logger.error(e)
         return message
 
     def communicateProspects(self):
@@ -147,11 +162,10 @@ class thinker:
             for prospect in pd.select().where(pd.STOcomm.is_null()):
                 report = {}
                 report["value1"] = "Stock:"+prospect.stock+" Strike:" + \
-                    prospect.strike+" Expiration Date:" + \
-                    str(prospect.expireDate)
+                    prospect.strike+" Expiration Date:" + str(prospect.expireDate)
                 report["value2"] = "Contracts:" + prospect.contracts+" Price:" + str(round(float(
                     prospect.price), 3)) + " RPotential:"+str(round(float(prospect.Rpotential), 2))
-                report["value3"] = "Stock ownership:" + \
+                report["value3"] = "Stock ownership:" +\
                     prospect.stockOwnership+" Color:"+prospect.color
                 self.log.logger.debug(
                     "    Communicator , invoking with these parameters "+str(report))
@@ -163,12 +177,14 @@ class thinker:
                                                                                  (pd.strike == prospect.strike) &
                                                                                  (pd.expireDate == prospect.expireDate)).execute()
 
-                except Exception:
+                except Exception as e:
                     self.log.logger.error(
-                        "     Thinker prospect IFTTT error" + Exception.with_traceback)
-        except Exception:
+                        "     Thinker prospect IFTTT error")
+                    self.log.logger.error(e)
+        except Exception as e:
             self.log.logger.error(
-                "     Thinker prospect communicator error" + Exception.with_traceback)
+                "     Thinker prospect communicator error")
+            self.log.logger.error(e)
 
     def communicateClosing(self):
         import requests
@@ -199,12 +215,14 @@ class thinker:
                                                                                                   (pd.strike == prospect.strike) &
                                                                                                   (pd.expireDate == prospect.expireDate)).execute()
 
-                    except Exception:
+                    except Exception as e:
                         self.log.logger.error(
-                            "     Thinker comm closing IFTTT error" + Exception.with_traceback)
-        except Exception:
+                            "     Thinker comm closing IFTTT error")
+                        self.log.logger.error(e)
+        except Exception as e:
             self.log.logger.error(
-                "     Thinker communicator closing error" + Exception.with_traceback)
+                "     Thinker communicator closing error")
+            self.log.logger.error(e)
 
     def updatePricingProspects(self):
         from rrlib.rrDb import ProspectData as pd
@@ -220,9 +238,10 @@ class thinker:
                 pd.update({pd.currentPrice: currentPrice, pd.pnl: pnl}).where((pd.stock == pt.stock) &
                                                                               (pd.strike == pt.strike) &
                                                                               (pd.expireDate == pt.expireDate)).execute()
-        except Exception:
+        except Exception as e:
             self.log.logger.error(
-                "     Thinker pricing update error" + Exception.with_traceback)
+                "     Thinker pricing update error")
+            self.log.logger.error(e)
 
     def sendDailyReport(self):
         from rrlib.rrDb import ProspectData as pd
@@ -254,9 +273,11 @@ class thinker:
                     "https://maker.ifttt.com/trigger/robotray_dailyreport/with/key/"+self.IFTTT, data=report)
                 if r.status_code == 200:
                     pass
-            except Exception:
+            except Exception as e:
                 self.log.logger.error(
-                    "     Thinker daily report IFTTT error" + Exception.with_traceback)
-        except Exception:
+                    "     Thinker daily report IFTTT error")
+                self.log.logger.error(e)
+        except Exception as e:
             self.log.logger.error(
-                "     Thinker sending daily report error" + Exception.with_traceback)
+                "     Thinker sending daily report error")
+            self.log.logger.error(e)

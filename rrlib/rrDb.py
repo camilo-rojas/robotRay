@@ -48,6 +48,7 @@ class rrDbManager:
         ExpirationDate.create_table()
         OptionData.create_table()
         IntradayStockData.create_table()
+        ProspectData.create_table()
 
     def isDbInUse(self):
         try:
@@ -96,9 +97,11 @@ class rrDbManager:
         return df
 
     def printOptions(self):
-        df = pd.DataFrame(list(OptionData.select().where(
-            # OptionData.kpi > 0 &
-            OptionData.timestamp > (datetime.datetime.now()-datetime.timedelta(days=4)))
+        df = pd.DataFrame(list(OptionData.select(OptionData.stock, OptionData.kpi, OptionData.strike, OptionData.price,
+                                                 OptionData.expireDate, OptionData.contracts, OptionData.volume,
+                                                 OptionData.openInterest).where(
+            (OptionData.kpi != "0")
+            & (OptionData.timestamp > (datetime.datetime.now()-datetime.timedelta(days=3))))
             .order_by(OptionData.kpi.desc()).dicts()))
         return df
 
@@ -217,13 +220,15 @@ class rrDbManager:
                                "INFO -     DONE - Stock intraday data retreived for "+stock.ticker)
                     self.log.logger.debug(
                         "  DB Manager intraday data retreived for "+stock.ticker)
-                except Exception:
+                except Exception as e:
                     self.log.logger.warning(
                         "  DB Manager Error failed to fetch intraday data for:"+stock.ticker+". Or several process running at the same time")
-        except Exception:
+                    self.log.logger.warning(e)
+        except Exception as e:
             self.log.logger.error(
                 "  DB Manager Error failed to fetch intraday data.  Please check internet connectivity "
                 "or yahoo.com for availability.  Using cached verssion.")
+            self.log.logger.error(e)
             return False
         # db.close()
         return True
@@ -266,9 +271,10 @@ class rrDbManager:
             retreiveDate = ExpirationDate.select().where(
                 ExpirationDate.date.contains(monthYear)).get().date
             completeDate = retreiveDate.strftime("%y%m%d")
-        except Exception:
+        except Exception as e:
             self.log.logger.error(
                 "    Error completing expiration date "+monthYear)
+            self.log.logger.error(e)
             return False
         # db.close()
         return completeDate
@@ -364,7 +370,7 @@ class rrDbManager:
                             self.log.logger.debug(
                                 "  DB Manager Built row: strike="+str(strike)+" row:"+str(row))
                             OptionData.insert(row).on_conflict(conflict_target=[OptionData.stock, OptionData.expireDate, OptionData.strike],
-                                                               update={OptionData.price: price, OptionData.openPrice: dataFetcher.iloc[1]['value'],
+                                                               update={OptionData.price: round(price, 3), OptionData.openPrice: dataFetcher.iloc[1]['value'],
                                                                        OptionData.bid: dataFetcher.iloc[2]['value'],
                                                                        OptionData.ask: dataFetcher.iloc[3]['value'],
                                                                        OptionData.dayRange: dataFetcher.iloc[6]['value'],
@@ -372,10 +378,11 @@ class rrDbManager:
                                                                        OptionData.openInterest: dataFetcher.iloc[9]['value'],
                                                                        OptionData.timestamp: datetime.datetime.now(),
                                                                        OptionData.contracts: str(contracts),
-                                                                       OptionData.stockOwnership: str(stockOwnership),
-                                                                       OptionData.withheldBP: str(withheldBP), OptionData.Rpotential: str(Rpotential),
-                                                                       OptionData.kpi: str(kpi),
-                                                                       OptionData.expectedPremium: str(expectedPremium)}).execute()
+                                                                       OptionData.stockOwnership: str(round(stockOwnership, 3)),
+                                                                       OptionData.withheldBP: str(round(withheldBP, 3)),
+                                                                       OptionData.Rpotential: str(round(Rpotential, 3)),
+                                                                       OptionData.kpi: str(round(kpi, 3)),
+                                                                       OptionData.expectedPremium: str(round(expectedPremium, 3))}).execute()
                             tqdm.write(str(datetime.datetime.now().strftime(
                                 '%Y-%m-%d %H:%M:%S.%f')[:-3])
                                 + " - rrLog - INFO -     DONE - Option data loaded for "+stock.ticker+" for month "+str(month))
@@ -390,9 +397,6 @@ class rrDbManager:
                         month = month+1
                         mbar.update(1)
                     except Exception as e:
-                        exc_type, exc_obj, exc_tb = sys.exc_info()
-                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                        self.log.logger.error(exc_type, fname, exc_tb.tb_lineno)
                         self.log.logger.warning(
                             "  DB Manager Error failed to fetch data.  Possibly no Stock Data loaded. Or several process running at the same time")
                         self.log.logger.warning(e)
