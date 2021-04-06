@@ -1,19 +1,17 @@
 # -*- coding: utf-8 -*-
 
 """
-Created on 07 05 2019
+Created on 05 04 2021
 
 @author: camilorojas
 
-Data Fetcher proxy for market data
-Currently Data Fetcher supports public datasources from Finviz and Yahoo.
-v1 verson will support Interactive Brokers connectivity for data.
-
-DataFetcher calls two different py files with the specific fetching logic
-- rrDFPublic.py - will capture the public data sources
-- rrDFIB.py - will connect and gather info from Interactive Brokers
+Data Fetcher Public will request the information from the following datasources
+Stock Data - finvizfinance library
+Intraday Stock Data - finvizfinance library
+Option Data - Yahoo Finance, scrapping with BS4
 
 """
+
 
 import sys
 import os
@@ -24,72 +22,60 @@ import pandas as pd
 from finvizfinance.quote import finvizfinance
 
 
-class StockDataFetcher():
-    # StockDataFetcher class
+class StockDFPublic():
 
     def __init__(self, symbol):
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
         from rrlib.rrLogger import logger
         self.symbol = symbol
         self.log = logger()
-        self.log.logger.debug("    Init Stock Data Fetcher "+str(symbol))
+        self.log.logger.debug("    Init Stock Public Data Fetcher "+str(symbol))
         # timeout import
         import configparser
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
-        self.source = config.get('datasource', 'source')
         self.timeout = int(config['urlfetcher']['Timeout'])
 
     def getData(self):
-        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
         self.log.logger.debug("    About to retreive "+self.symbol)
-        if (self.source == "public"):
-            from rrlib.rrDFPublic import StockDFPublic as sdfp
-            df = sdfp(self.symbol).getData()
-        elif(self.source == "ib"):
-            # implement class for ib retreival
-            df = pd.DataFrame()
-        else:
-            self.log.logger.error("    DataFetcher source error:"+self.source)
+        stock = finvizfinance(self.symbol)
+        self.log.logger.debug("      For: "+self.symbol+" data:"+str(stock.TickerFundament()))
+        df = pd.DataFrame(stock.TickerFundament().items(), columns=['key', 'value'])
         pd.set_option("display.max_rows", None, "display.max_columns", None)
         self.log.logger.debug("   Values loaded: \n"+str(df))
         self.log.logger.debug(
-            "    DONE - Stock Data Fetcher "+str(self.symbol))
+            "    DONE - Stock Public Data Fetcher "+str(self.symbol))
         return df
 
     def getIntradayData(self):
         self.log.logger.debug("    About to retreive "+self.symbol)
-        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-        if(self.source == "public"):
-            from rrlib.rrDFPublic import StockDFPublic as sdfp
-            df = sdfp(self.symbol).getIntradayData()
-            self.log.logger.debug("   Values loaded: \n"+str(df))
-        elif(self.souce == "ib"):
-            self.log.logger.debug("   Loading intraday from IB")
-            # implement class for ib retreival
-            df = pd.DataFrame()
-        else:
-            self.log.logger.error("   DataFetcher source error:"+self.source)
-            df = pd.DataFrame()
+        stock = finvizfinance(self.symbol)
+        self.log.logger.debug("      For: "+self.symbol+" data:"+str(stock.TickerFundament()))
+        df = pd.DataFrame()
+        # df = pd.DataFrame(columns=['stock', 'price', '%Change', '%Volume'])
+        df = df.append({'stock': self.symbol, 'price': stock.TickerFundament().get('Price'),
+                        '%Change': float(stock.TickerFundament().get('Change').strip('%'))/100,
+                        '%Volume':
+                        float(stock.TickerFundament().get('Rel Volume'))}, ignore_index=True)
+        self.log.logger.debug("   Values loaded: \n"+str(df))
         self.log.logger.debug(
-            "    DONE - Stock Intraday Data Fetcher "+str(self.symbol))
+            "    DONE - Stock Intraday Public Data Fetcher "+str(self.symbol))
         return df
 
 
-class OptionDataFetcher():
+class OptionDFPublic():
 
     def __init__(self, symbol):
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
         from rrlib.rrLogger import logger
         self.symbol = symbol
         self.log = logger()
-        self.log.logger.debug("    Init Option Data Fetcher for "+symbol)
+        self.log.logger.debug("    Init Option Public Data Fetcher for "+symbol)
         # timeout import
         import configparser
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
         self.timeout = int(config['urlfetcher']['Timeout'])
-        self.source = config.get('datasource', 'source')
 
     # Strike int, month is int and the number of months after today
     def getData(self, month, strike):
@@ -135,14 +121,14 @@ class OptionDataFetcher():
                     price = soup.find(
                         "span", {"class": "Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px) D(ib)"})
                     self.log.logger.debug(
-                        "    Done pricing loaded: \n"+str(price.text))
+                        "    Done public pricing loaded: \n"+str(price.text))
                     df = df.append(
                         {'key': 'price', 'value': price.text}, ignore_index=True)
                 self.log.logger.debug("    Done Option loaded: \n"+str(df))
                 self.log.logger.debug(
-                    "    Getting Option loaded: "+self.symbol+" for month "+str(month))
+                    "    Getting Public Option loaded: "+self.symbol+" for month "+str(month))
                 return df
         else:
             self.log.logger.error(
-                "    Option Data Fetcher Month outside or range, allowed 3-8 months")
+                "    Month outside or range, allowed 3-8 months")
             return df

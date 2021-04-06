@@ -104,7 +104,7 @@ class server():
 
     def getStockData(self):
         self.log.logger.info("10. Getting stock data, daily process ")
-        if not self.isworkday():
+        if self.isworkday():
             # if True:
             try:
                 self.db.getStockData()
@@ -211,7 +211,7 @@ class server():
                         "================================================================")
                     self.log.logger.info("")
                     self.log.logger.info(
-                        "995. General Commands: help, clear, status, jobs, isdbinuse, quit, exit, intro, about")
+                        "995. General Commands: help, clear, status, source, jobs, isdbinuse, quit, exit, intro, about")
                     self.log.logger.info(
                         "================================================================")
                     self.log.logger.info(
@@ -241,6 +241,13 @@ class server():
                         self.log.logger.info("994. DB is currently: Not used by any thread")
                     else:
                         self.log.logger.info("994. DB is currently: In Use by thread")
+                elif (command == "source"):
+                    if (self.db.getSource() == "public"):
+                        self.log.logger.info("501. Current data fetched from: Finviz & Yahoo")
+                    elif (self.db.getSource() == "ib"):
+                        self.log.logger.info("501. Current data fetched from: Interactive Brokers")
+                    else:
+                        self.log.logger.info("501. "+self.db.getSource())
                 elif (command == "printstocks"):
                     self.log.logger.info("550. Stocks being tracked:")
                     print(self.db.printStocks())
@@ -276,7 +283,12 @@ class server():
                                          + ", " +
                                          str(datetime.datetime.now() - self.thinkUpdateTime) +
                                          " has passed since last run")
-                    self.log.logger.info("500. Currently getting data from: Finviz + Yahoo")
+                    if (self.db.getSource() == "public"):
+                        self.log.logger.info("501. Current data fetched from: Finviz & Yahoo")
+                    elif (self.db.getSource() == "ib"):
+                        self.log.logger.info("501. Current data fetched from Interactive Brokers")
+                    else:
+                        self.log.logger.info("501. "+get.db.getSource())
                     self.log.logger.info("500. Run cycle #: "+str(self.runCycle))
                 elif(command == "getstockdata"):
                     self.log.logger.info(

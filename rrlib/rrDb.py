@@ -39,6 +39,7 @@ class rrDbManager:
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
         self.stocks = config.get('stocks', 'stocks')
+        self.source = config.get('datasource', 'source')
         self.log = logger()
         self.log.logger.debug("  DB Manager starting.  ")
 
@@ -57,6 +58,9 @@ class rrDbManager:
             status = False
         # db.close()
         return status
+
+    def getSource(self):
+        return self.source
 
     def initializeStocks(self):
         self.log.logger.debug("  DB Manager initializing Stock Table.  ")
