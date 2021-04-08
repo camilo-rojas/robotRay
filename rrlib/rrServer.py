@@ -93,7 +93,7 @@ class server():
         self.log.logger.info(
             "02. DONE - Setting dates and confirming option ")
         self.log.logger.info("03. Stock data startup sequence")
-        self.getStockData()
+        # self.getStockData()
         self.log.logger.info("03. DONE - Stock data startup sequence")
         self.log.logger.info("04. Scheduling daily scanners")
         self.scheduler()
@@ -224,9 +224,13 @@ class server():
                         "================================================================")
                     self.log.logger.info(
                         "995. Stock Data info commands: printstocks, printintra")
-                    self.log.logger.info("995 - Option Data info commands: printoptions")
+                    self.log.logger.info("995. Option Data info commands: printoptions")
                     self.log.logger.info(
-                        "995. Run prospect info: getprospects, sendprospects")
+                        "995. Run prospect info: printallp, printopenp, printclosedp, sendp")
+                    self.log.logger.info(
+                        "================================================================")
+                    self.log.logger.info(
+                        "995. Statistics for bot operations: report, reporty, reportytd, reportsm, reportw")
                 elif(command == "clear"):
                     if sys.platform == 'win32':
                         os.system("cls")
@@ -257,10 +261,18 @@ class server():
                 elif (command == "printoptions"):
                     self.log.logger.info("570. Options data:")
                     print(self.db.printOptions())
-                elif(command == "getprospects"):
-                    self.log.logger.info("130. Getting prospects (soon)")
-                elif(command == "sendprospects"):
-                    self.log.logger.info("140. Sending prospects (soon)")
+                elif (command == "printopenp"):
+                    self.log.logger.info("130. Open Prospect data:")
+                    print(thinker().printOpenProspects())
+                elif (command == "printclosedp"):
+                    self.log.logger.info("130. Closed Prospect data:")
+                    print(thinker().printClosedProspects())
+                elif (command == "printallp"):
+                    self.log.logger.info("130. Prospect data:")
+                    print(thinker().printAllProspects())
+                elif(command == "sendp"):
+                    self.log.logger.info("140. Sending daily report of prospects")
+                    thinker().sendDailyReport()
                 elif(command == "think"):
                     self.log.logger.info("590. Launching thinker")
                     self.think()
@@ -288,7 +300,7 @@ class server():
                     elif (self.db.getSource() == "ib"):
                         self.log.logger.info("501. Current data fetched from Interactive Brokers")
                     else:
-                        self.log.logger.info("501. "+get.db.getSource())
+                        self.log.logger.info("501. "+self.db.getSource())
                     self.log.logger.info("500. Run cycle #: "+str(self.runCycle))
                 elif(command == "getstockdata"):
                     self.log.logger.info(
@@ -318,6 +330,7 @@ class server():
 
     def run_threaded(self, job_func):
         job_thread = threading.Thread(target=job_func)
+        job_thread.daemon = True
         job_thread.start()
         self.threads.append(job_thread)
 

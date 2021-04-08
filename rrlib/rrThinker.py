@@ -27,6 +27,7 @@ import sys
 import os
 import datetime
 from tqdm import tqdm
+import pandas as pd
 
 
 class thinker:
@@ -229,6 +230,7 @@ class thinker:
         from rrlib.rrDb import OptionData as od
         try:
             for pt in pd.select().where(pd.BTCcomm.is_null()):
+                self.log.logger.debug("    Thinker updating prices for: " + str(pt))
                 currentPrice = od.select(od.price).where((od.stock == pt.stock) & (
                     od.strike == pt.strike) & (od.expireDate == pt.expireDate)).get().price
                 pnl = str(round(float(pt.contracts) *
@@ -242,6 +244,26 @@ class thinker:
             self.log.logger.error(
                 "     Thinker pricing update error")
             self.log.logger.error(e)
+
+    def printAllProspects(self):
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        from rrlib.rrDb import ProspectData as pdata
+        df = pd.DataFrame(list(pdata.select().order_by(pdata.pnl.desc()).dicts()))
+        return df
+
+    def printOpenProspects(self):
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        from rrlib.rrDb import ProspectData as pdata
+        df = pd.DataFrame(list(pdata.select().where(
+            pdata.BTCcomm.is_null()).order_by(pdata.pnl.desc()).dicts()))
+        return df
+
+    def printClosedProspects(self):
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        from rrlib.rrDb import ProspectData as pdata
+        df = pd.DataFrame(list(pdata.select().where(
+            pdata.BTCcomm.is_null(False)).order_by(pdata.pnl.desc()).dicts()))
+        return df
 
     def sendDailyReport(self):
         from rrlib.rrDb import ProspectData as pd
