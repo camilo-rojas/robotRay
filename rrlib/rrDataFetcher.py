@@ -89,8 +89,6 @@ class OptionDataFetcher():
 
     # Strike int, month is int and the number of months after today
     def getData(self, month, strike):
-        # https://finance.yahoo.com/quote/WDAY200117P00160000
-        # Get the put value for specified month 3-8
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
         if(self.source == "public"):
             from rrlib.rrDFPublic import OptionDFPublic as odfp

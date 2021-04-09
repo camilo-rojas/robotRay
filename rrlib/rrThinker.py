@@ -98,43 +98,58 @@ class thinker:
                 #           " "+str(float(stock.kpi) > float(self.IntradayKPIGreen)))
                 # Green day decline
                 if float(stock.pctChange) < float(self.dayPriceChgGreen) and float(stock.kpi) > float(self.IntradayKPIGreen):
-                    higherOptionData = OptionData.select().where(
-                        (OptionData.stock == stock.stock) & (OptionData.strike == strike) &
-                        (OptionData.timestamp > (datetime.datetime.now()-datetime.timedelta(days=4)))).order_by(OptionData.kpi.desc()).get()
-                    if float(higherOptionData.price) > float(higherOptionData.expectedPremium):
-                        price = higherOptionData.price
-                    else:
-                        price = higherOptionData.expectedPremium
-                    # found a prospect
-                    if float(price) < float(higherOptionData.ask)*float(self.ExpPrice2Ask):
-                        self.log.logger.info(
-                            "     Thinker found a prospect with green day decline and also green KPI, STO Puts for: "+stock.stock)
-                        self.log.logger.info(self.prospectFormatter(stock.stock, str(higherOptionData.expireDate), strike, price,
-                                                                    higherOptionData.contracts,
-                                                                    higherOptionData.bid, higherOptionData.ask, higherOptionData.expectedPremium,
-                                                                    higherOptionData.Rpotential))
-                        # save prospect db for communication
-                        self.db.saveProspect(stock.stock, strike, higherOptionData.expireDate, price, higherOptionData.contracts,
-                                             higherOptionData.stockOwnership, higherOptionData.Rpotential, kpi=higherOptionData.kpi, color="green")
+                    try:
+                        higherOptionData = OptionData.select().where(
+                            (OptionData.stock == stock.stock) & (OptionData.strike == strike) &
+                            (OptionData.timestamp > (datetime.datetime.now()-datetime.timedelta(days=4)))).order_by(OptionData.kpi.desc()).get()
+                        if float(higherOptionData.price) > float(higherOptionData.expectedPremium):
+                            price = higherOptionData.price
+                        else:
+                            price = higherOptionData.expectedPremium
+                        # found a prospect
+                        if float(price) < float(higherOptionData.ask)*float(self.ExpPrice2Ask):
+                            self.log.logger.info(
+                                "     Thinker found a prospect with green day decline and also green KPI, STO Puts for: "+stock.stock)
+                            self.log.logger.info(self.prospectFormatter(stock.stock, str(higherOptionData.expireDate), strike, price,
+                                                                        higherOptionData.contracts,
+                                                                        higherOptionData.bid, higherOptionData.ask, higherOptionData.expectedPremium,
+                                                                        higherOptionData.Rpotential))
+                            # save prospect db for communication
+                            self.db.saveProspect(stock.stock, strike, higherOptionData.expireDate, price, higherOptionData.contracts,
+                                                 higherOptionData.stockOwnership, higherOptionData.Rpotential,
+                                                 kpi=higherOptionData.kpi, color="green")
+                    except OptionData.DoesNotExist:
+                        tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                                   + " - rrLog - " +
+                                   "INFO -       Green Potential day decline, but no option data for: "+stock.stock +
+                                   " with strike:"+strike + ", in the last 4 days")
                 # Yellow day decline
                 elif float(stock.pctChange) < float(self.dayPriceChgRed) and float(stock.kpi) > float(self.IntradayKPIGreen):
-                    higherOptionData = OptionData.select().where(
-                        (OptionData.stock == stock.stock) & (OptionData.strike == strike) &
-                        (OptionData.timestamp > (datetime.datetime.now()-datetime.timedelta(days=4)))).order_by(OptionData.kpi.desc()).get()
-                    if float(higherOptionData.price) > float(higherOptionData.expectedPremium):
-                        price = higherOptionData.price
-                    else:
-                        price = higherOptionData.expectedPremium
-                    # found a prospect
-                    if float(price) < float(higherOptionData.ask)*float(self.ExpPrice2Ask):
-                        self.log.logger.info(
-                            "     Thinker found a prospect with yellow day decline and also green KPI, STO Puts for: "+stock.stock)
-                        self.log.logger.info(self.prospectFormatter(stock.stock, str(higherOptionData.expireDate), strike, price,
-                                                                    higherOptionData.contracts,
-                                                                    higherOptionData.bid, higherOptionData.ask, higherOptionData.expectedPremium,
-                                                                    higherOptionData.Rpotential))
-                        self.db.saveProspect(stock.stock, strike, higherOptionData.expireDate, price, higherOptionData.contracts,
-                                             higherOptionData.stockOwnership, higherOptionData.Rpotential, kpi=higherOptionData.kpi, color="yellow")
+                    try:
+                        higherOptionData = OptionData.select().where(
+                            (OptionData.stock == stock.stock) & (OptionData.strike == strike) &
+                            (OptionData.timestamp > (datetime.datetime.now()-datetime.timedelta(days=4)))).order_by(OptionData.kpi.desc()).get()
+                        if float(higherOptionData.price) > float(higherOptionData.expectedPremium):
+                            price = higherOptionData.price
+                        else:
+                            price = higherOptionData.expectedPremium
+                        # found a prospect
+                        if float(price) < float(higherOptionData.ask)*float(self.ExpPrice2Ask):
+                            self.log.logger.info(
+                                "     Thinker found a prospect with yellow day decline and also green KPI, STO Puts for: "+stock.stock)
+                            self.log.logger.info(self.prospectFormatter(stock.stock, str(higherOptionData.expireDate), strike, price,
+                                                                        higherOptionData.contracts,
+                                                                        higherOptionData.bid, higherOptionData.ask, higherOptionData.expectedPremium,
+                                                                        higherOptionData.Rpotential))
+                            self.db.saveProspect(stock.stock, strike, higherOptionData.expireDate, price, higherOptionData.contracts,
+                                                 higherOptionData.stockOwnership, higherOptionData.Rpotential,
+                                                 kpi=higherOptionData.kpi, color="yellow")
+                    except OptionData.DoesNotExist:
+                        tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                                   + " - rrLog - " +
+                                   "INFO -        Yellow Potential day decline, but no option data for: "+stock.stock +
+                                   " with strike:"+strike + ", in the last 4 days")
+
         except Exception as e:
             self.log.logger.error("     Thinker evaluation error")
             self.log.logger.error(e)
