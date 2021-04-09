@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 Created on Sat Sep 15 14:46:12 2018
-
+robotRay server v1.0
 @author: camilorojas
+
+Optin Manager class for put formating and supporting tools
 """
-
-
 import datetime
 import sys
 import os

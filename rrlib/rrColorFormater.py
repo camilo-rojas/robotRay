@@ -1,4 +1,13 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on 07 05 2019
+robotRay server v1.0
+@author: camilorojas
+
+Color formater for the log file and console
+
+"""
 
 from copy import copy
 from logging import Formatter

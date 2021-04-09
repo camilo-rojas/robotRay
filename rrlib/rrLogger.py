@@ -1,4 +1,13 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on 07 05 2019
+robotRay server v1.0
+@author: camilorojas
 
+rrLogger class for logging throughout the RobotRay proyect
+
+"""
 
 import logging
 import sys
@@ -12,8 +21,6 @@ class logger:
         from rrlib.rrColorFormater import ColoredFormatter
         self.logger = logging.getLogger("rrLog")
         self.logger.setLevel(logging.INFO)
-#        if path.isfile("rrLog.log"):
-#            remove("rrLog.log")
         fh = logging.FileHandler('rrLog.log')
         fh.setLevel(logging.INFO)
         ch = logging.StreamHandler(sys.stdout)

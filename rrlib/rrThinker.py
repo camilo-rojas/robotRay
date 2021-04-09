@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on 07 05 2019
-
+Created on 07 04 2021
+robotRay server v1.0
 @author: camilorojas
 
 Thinker module
@@ -23,6 +23,7 @@ Passive Evaluator module
 Batch nature for evaluation of alerted positions
 
 """
+
 import sys
 import os
 import datetime

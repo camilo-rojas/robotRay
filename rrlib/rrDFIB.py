@@ -1,8 +1,8 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 """
 Created on 05 04 2021
-
+robotRay server v1.0
 @author: camilorojas
 
 Data Fetcher Interactive Brokers will request the information from the following datasources
@@ -12,7 +12,6 @@ Option Data - IB library
 
 Pending implementation
 """
-
 
 import sys
 import os

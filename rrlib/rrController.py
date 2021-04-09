@@ -1,6 +1,5 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 """
 Created on 07 05 2019
 robotRay server v1.0
@@ -8,6 +7,7 @@ robotRay server v1.0
 
 Controller class file that coordinates channel requests and executes with backend commands
 """
+
 import threading
 import time
 import sys

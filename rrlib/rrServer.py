@@ -4,11 +4,11 @@
 Created on 07 05 2019
 robotRay server v1.0
 @author: camilorojas
+
+RobotRay main server to coordinate main thread execution and services
+
 """
 
-# Main Server code
-# Dependencies: anjos.schedule, conda-forge.peewee, requests
-# Scrapping info using BS4 with finance.yahoo.com and finviz.com
 import threading
 import signal
 import schedule
@@ -16,12 +16,6 @@ import time
 import sys
 import os
 import datetime
-
-
-# To do's
-# 1. Set parameters for Db initialization at startup
-# 3. Progression counters for data downloads and jobs
-# 4. Integration with IFTT to alert home assistant or myself on new oportunities
 
 
 class server():

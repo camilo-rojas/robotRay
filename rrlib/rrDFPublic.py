@@ -1,8 +1,8 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 """
 Created on 05 04 2021
-
+robotRay server v1.0
 @author: camilorojas
 
 Data Fetcher Public will request the information from the following datasources
@@ -11,7 +11,6 @@ Intraday Stock Data - finvizfinance library
 Option Data - Yahoo Finance, scrapping with BS4
 
 """
-
 
 import sys
 import os

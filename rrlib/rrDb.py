@@ -1,17 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-import pandas as pd
-import peewee as pw
-import datetime
-import sys
-import os
-import time
-from tqdm import tqdm
-
 """
 Created on 07 05 2019
-
+robotRay server v1.0
 @author: camilorojas
 
 Database implementation in SQLLite3
@@ -26,6 +17,14 @@ Entities:
     - Dates for expiration for Y+5 of option puts
 
 """
+
+import pandas as pd
+import peewee as pw
+import datetime
+import sys
+import os
+import time
+from tqdm import tqdm
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 db = pw.SqliteDatabase('rrDb.db')

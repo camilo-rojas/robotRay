@@ -1,8 +1,8 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 """
 Created on 07 05 2019
-
+robotRay server v1.0
 @author: camilorojas
 
 Data Fetcher proxy for market data

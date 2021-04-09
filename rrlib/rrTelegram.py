@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Created on 07 04 2021
+robotRay server v1.0
+@author: camilorojas
+
+Telegram chat implementation for RobotRay for two way communication on operational status
+
+"""
 
 import datetime
 import sys
@@ -10,28 +18,22 @@ import telegram
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Dispatcher
 
 
-"""
-Created on 07 05 2019
-
-@author: camilorojas
-
-Telegram chat implementation for RobotRay for two way communication on operational status
-
-"""
-
-
 class rrTelegram:
     def __init__(self, *args, **kwargs):
+        # starting common services
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        # starting logging
         from rrlib.rrLogger import logger
+        self.log = logger()
+        # starting backend services
         from rrlib.rrDb import rrDbManager
+        self.db = rrDbManager()
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
-        self.log = logger()
-        self.log.logger.debug("  Thinker module starting.  ")
-        self.db = rrDbManager()
-        # Telegram API key
+        # Telegram API key & chat id for secure comms
         self.APIkey = config.get('telegram', 'api')
+        self.chatid = config.get('telegram', 'chatid')
+        self.log.logger.debug("  rrTelegram module starting.  ")
         # starting bot
         # self.bot = telegram.bot(self.APIkey)
         self.upd = Updater(self.APIkey)
@@ -40,20 +42,30 @@ class rrTelegram:
     # function to handle the /start command
     def start(self, update, context):
         first_name = update.message.chat.first_name
-        update.message.reply_text(f"Hi {first_name}, RobotRay ready for you")
+        self.chat_id = update.message.chat_id
+        if(str(self.chat_id) == str(self.chatid)):
+            update.message.reply_text(
+                f"Hi {first_name}, RobotRay ready for you.")
+            context.bot.send_message(self.chat_id, text="Hello from context")
+        else:
+            update.message.reply_text("Hi you are not authorized")
 
     # function to handle the /help command
     def help(self, update, context):
-        update.message.reply_text('help command received')
+        if(str(self.chat_id) == str(self.chatid)):
+            update.message.reply_text('RobotRay help menu, following the options available:')
+        else:
+            update.message.reply_text("Hi you not authorized")
 
     # function to handle errors occured in the dispatcher
     def error(self, update, context):
-        update.message.reply_text('an error occured')
+        update.message.reply_text('RobotRay error occured.')
 
     # function to handle normal text
     def textCommand(self, update, context):
-        text_received = update.message.text
-        update.message.reply_text(f'did you said "{text_received}" ?')
+        # text_received = update.message.text
+        response = "RR - Answer"
+        update.message.reply_text(f'{response}')
 
     def startbot(self):
         self.dp.add_handler(CommandHandler("start", self.start))
