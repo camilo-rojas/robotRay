@@ -98,6 +98,11 @@ class server():
         self.log.logger.info("04. Scheduling daily scanners")
         self.scheduler()
         self.log.logger.info("04. DONE - Scheduling daily scanners")
+        self.startbot = config.get('telegram', 'startbot')
+        if (self.startbot == "Yes"):
+            self.log.logger.info("05. Starting Telegram bot")
+            self.bot = rrTelegram()
+            self.log.logger.info("05. DONE - Starting Telegram bot")
         self.log.logger.info(
             "-- Finished Startup robotRay server. Starting schedule.")
         self.log.logger.info("")
@@ -193,6 +198,8 @@ class server():
 
     def runServer(self):
         self.run_threaded(self.runScheduler)
+        if (self.startbot == "Yes"):
+            self.run_threaded(self.bot.startbot)
         while True:
             try:
                 command = input("> ")
@@ -312,7 +319,7 @@ class server():
                     self.log.logger.info("996. Currently running: " +
                                          str(threading.active_count())+" threads.")
                     # for threadStatus in self.threads:
-                    #    self.log.logger.info("996 - "+str(self.get_thread_info()))
+                    #    self.log.logger.info("996 - "+str(threadStatus)
                     # self.log.logger.info("996 - End of job information")
                 elif(command == ""):
                     pass
@@ -334,13 +341,10 @@ class server():
         job_thread.start()
         self.threads.append(job_thread)
 
-    def get_thread_info(myThread):
-        return str(myThread)
-
     def shutdown(self):
         self.log.logger.info("999. - Shutdown initiated")
-        for threadtokill in self.threads:
-            threadtokill.join()
+        # for threadtokill in self.threads:
+        #    threadtokill.join()
         self.log.logger.info("999. - Shutdown completed")
         sys.exit()
 
@@ -376,6 +380,7 @@ if __name__ == '__main__':
         from rrlib.rrLogger import logger
         from rrlib.rrDb import rrDbManager
         from rrlib.rrThinker import thinker
+        from rrlib.rrTelegram import rrTelegram
         try:
             mainserver = server()
             mainserver.startup()

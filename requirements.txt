@@ -7,3 +7,4 @@ schedule
 requests
 finvizfinance
 tqdm
+python-telegram-bot
