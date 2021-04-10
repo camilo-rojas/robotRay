@@ -33,15 +33,18 @@ import pandas as pd
 
 class thinker:
     def __init__(self):
+        # starting common services
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        # starting logging
         from rrlib.rrLogger import logger
+        self.log = logger()
+        # starting backend services
         from rrlib.rrDb import rrDbManager
+        self.db = rrDbManager()
+        # starting ini parameters
         import configparser
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
-        self.log = logger()
-        self.log.logger.debug("  Thinker module starting.  ")
-        self.db = rrDbManager()
         # daily decrease green if % stock dtd growth < -4.5%, -4.5% < yellow < 2%, red > 2%
         self.dayPriceChgGreen = config.get('thinker', 'dayPriceChgGreen')
         self.dayPriceChgRed = config['thinker']['dayPriceChgRed']
@@ -64,17 +67,21 @@ class thinker:
         self.BTCdays = config['thinker']['BTCdays']
         # Get option expected price flexiblity to ask limit
         self.ExpPrice2Ask = config['thinker']['ExpPrice2Ask']
+        # is telegram bot enabled for commands
+        self.startbot = config.get('telegram', 'startbot')
+        self.log.logger.debug("  Thinker module starting.  ")
+
         # print debug init parameters
-        self.log.logger.info(
+        self.log.logger.debug(
             "     105. Thinker operational parameters: Day Percentage Change for Green day:" +
             str(float(self.dayPriceChgGreen)*100)
             + "%, for Red Day:" + str(float(self.dayPriceChgRed)*100)+"%")
-        self.log.logger.info("     Monthly Expected Premium:" + str(float(self.monthlyPremium)*100)
-                             + "%, Simple Moving Average 200 for Green Day:" +
-                             str(float(self.smaGreen)*100) +
-                             "%, for Red Day:" + str(float(self.smaRed*100))+"%")
-        self.log.logger.info("     Available funds in portfolio: USD$" +
-                             str(float(self.R)/0.02)+", R (risk money per trade):USD$" + self.R)
+        self.log.logger.debug("     Monthly Expected Premium:" + str(float(self.monthlyPremium)*100)
+                              + "%, Simple Moving Average 200 for Green Day:" +
+                              str(float(self.smaGreen)*100) +
+                              "%, for Red Day:" + str(float(self.smaRed*100))+"%")
+        self.log.logger.debug("     Available funds in portfolio: USD$" +
+                              str(float(self.R)/0.02)+", R (risk money per trade):USD$" + self.R)
 
     def evaluateProspects(self):
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -174,11 +181,12 @@ class thinker:
     def communicateProspects(self):
         import requests
         import datetime
+        from rrlib.rrTelegram import rrTelegram
         from rrlib.rrDb import ProspectData as pd
         try:
             for prospect in pd.select().where(pd.STOcomm.is_null()):
                 report = {}
-                report["value1"] = "Stock:"+prospect.stock+" Strike:" + \
+                report["value1"] = "Prospect Found: Stock:"+prospect.stock+" Strike:" + \
                     prospect.strike+" Expiration Date:" + str(prospect.expireDate)
                 report["value2"] = "Contracts:" + prospect.contracts+" Price:" + str(round(float(
                     prospect.price), 3)) + " RPotential:"+str(round(float(prospect.Rpotential), 2))
@@ -189,6 +197,9 @@ class thinker:
                 try:
                     r = requests.post(
                         "https://maker.ifttt.com/trigger/robotray_sto_comm/with/key/"+self.IFTTT, data=report)
+                    if (self.startbot == "Yes"):
+                        rrTelegram().sendMessage(
+                            str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
                     if r.status_code == 200:
                         pd.update({pd.STOcomm: datetime.datetime.today()}).where((pd.stock == prospect.stock) &
                                                                                  (pd.strike == prospect.strike) &
@@ -206,6 +217,7 @@ class thinker:
     def communicateClosing(self):
         import requests
         import datetime
+        from rrlib.rrTelegram import rrTelegram
         from rrlib.rrDb import ProspectData as pd
         try:
             for prospect in pd.select().where(pd.BTCcomm.is_null()):
@@ -214,19 +226,22 @@ class thinker:
                     pnl = str(round(float(prospect.contracts) *
                                     (float(prospect.price)-float(prospect.currentPrice))*100-float(prospect.contracts)*2, 2))
                     report = {}
-                    report["value1"] = "Time to close the contract<br>Stock:"+prospect.stock + \
-                        " Strike:" + prospect.strike + \
+                    report["value1"] = "Time to close the contract<br>Stock:"+prospect.stock +\
+                        " Strike:" + prospect.strike +\
                         " Expiration Date:" + str(prospect.expireDate)
-                    report["value2"] = "Contracts:" + prospect.contracts+" Closing Price:" + \
-                        str(round(float(prospect.currentPrice), 3)) + \
+                    report["value2"] = "Contracts:" + prospect.contracts+" Closing Price:" +\
+                        str(round(float(prospect.currentPrice), 3)) +\
                         " PNL for this oppty:" + pnl
-                    report["value3"] = "Stock ownership:" + \
+                    report["value3"] = "Stock ownership:" +\
                         prospect.stockOwnership+" Color:"+prospect.color
                     self.log.logger.debug(
                         "    Communicator, invoking with these parameters " + str(report))
                     try:
                         r = requests.post(
                             "https://maker.ifttt.com/trigger/robotray_btc_comm/with/key/"+self.IFTTT, data=report)
+                        if (self.startbot == "Yes"):
+                            rrTelegram().sendMessage(
+                                str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
                         if r.status_code == 200:
                             pd.update({pd.BTCcomm: datetime.datetime.today(), pd.pnl: pnl}).where((pd.stock == prospect.stock) &
                                                                                                   (pd.strike == prospect.strike) &
@@ -283,6 +298,7 @@ class thinker:
 
     def sendDailyReport(self):
         from rrlib.rrDb import ProspectData as pd
+        from rrlib.rrTelegram import rrTelegram
         import requests
         pnlClosed = 0
         numClosed = 0
@@ -297,9 +313,9 @@ class thinker:
                 numOpen = numOpen + 1
 
             report = {}
-            report["value1"] = "PNL Closed: $" + \
+            report["value1"] = "PNL Closed: $" +\
                 str(round(pnlClosed, 2))+" with "+str(numClosed)+" prospects"
-            report["value2"] = "PNL Open:   $" + \
+            report["value2"] = "PNL Open:   $" +\
                 str(round(pnlOpen, 2))+" with "+str(numOpen)+" prospects"
             report["value3"] = "PNL Total:  $"+str(
                 round(pnlClosed + pnlOpen, 2))+" with "+str(numClosed+numOpen)+" prospects"
@@ -309,6 +325,9 @@ class thinker:
             try:
                 r = requests.post(
                     "https://maker.ifttt.com/trigger/robotray_dailyreport/with/key/"+self.IFTTT, data=report)
+                if (self.startbot == "Yes"):
+                    rrTelegram().sendMessage(
+                        str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
                 if r.status_code == 200:
                     pass
             except Exception as e:

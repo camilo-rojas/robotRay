@@ -27,7 +27,10 @@ class rrTelegram:
         self.log = logger()
         # starting backend services
         from rrlib.rrDb import rrDbManager
+        from rrlib.rrController import rrController
         self.db = rrDbManager()
+        self.cont = rrController()
+        # starting ini parameters
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
         # Telegram API key & chat id for secure comms
@@ -63,9 +66,10 @@ class rrTelegram:
 
     # function to handle normal text
     def textCommand(self, update, context):
-        # text_received = update.message.text
-        response = "RR - Answer"
-        update.message.reply_text(f'{response}')
+        text_received = update.message.text
+        response = self.cont.command(text_received)
+        for x in response:
+            update.message.reply_text(f'{x}')
 
     def startbot(self):
         self.dp.add_handler(CommandHandler("start", self.start))
@@ -74,3 +78,6 @@ class rrTelegram:
         self.dp.add_error_handler(self.error)
         # start the bot
         self.upd.start_polling()
+
+    def sendMessage(self, message=""):
+        self.upd.bot.send_message(self.chatid, text=message)

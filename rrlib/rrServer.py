@@ -20,9 +20,8 @@ import datetime
 
 class server():
     def __init__(self, *args, **kwargs):
+        self.log = logger()
         self.intro()
-        # add logic for argument based initalization and parametization.
-        # runCycle takes care of amount of intraday fetches
 
         def SigIntHand(SIG, FRM):
             self.log.logger.info(
@@ -32,15 +31,14 @@ class server():
         self.runCycle = 0
         self.threads = []
         self.running = True
-        self.log.logger.info("Initialization finished robotRay server")
         self.startupTime = datetime.datetime.now()
         self.stockDataUpdateTime = datetime.datetime.now()
         self.optionDataUpdateTime = datetime.datetime.now()
         self.thinkUpdateTime = datetime.datetime.now()
         self.dbFilename = ""
+        self.log.logger.info("Initialization finished robotRay server")
 
     def intro(self):
-        self.log = logger()
         self.log.logger.info("")
         self.log.logger.info(
             "-----------------------------------------------------------------")
@@ -59,6 +57,7 @@ class server():
 
     def startup(self):
         self.log.logger.info("-- Startup robotRay server")
+        # starting common services
         # find .ini db filename
         import configparser
         config = configparser.ConfigParser()
@@ -103,7 +102,7 @@ class server():
 
     def getStockData(self):
         self.log.logger.info("10. Getting stock data, daily process ")
-        if self.isworkday():
+        if self.ismarketopen():
             # if True:
             try:
                 self.db.getStockData()
@@ -116,7 +115,7 @@ class server():
 
     def getOptionData(self):
         self.log.logger.info("20. Getting Option Data")
-        if self.isworkday():
+        if self.ismarketopen():
             # if True:
             try:
                 self.db.getOptionData()
@@ -131,7 +130,7 @@ class server():
         self.log.logger.info("30. Getting Intraday Data")
         self.runCycle = self.runCycle + 1
         # if True:
-        if self.isworkday():
+        if self.ismarketopen():
             try:
                 self.db.getIntradayData()
                 self.log.logger.info(
@@ -146,7 +145,7 @@ class server():
     def think(self):
         self.log.logger.info(
             "100. Initiating R's catcher...")
-        if self.isworkday():
+        if self.ismarketopen():
             try:
                 self.thinker = thinker()
                 self.thinkUpdateTime = datetime.datetime.now()
@@ -170,7 +169,7 @@ class server():
     def sendReport(self):
         self.log.logger.info(
             "200. Sending report to IFTTT")
-        if self.isworkday():
+        if self.ismarketopen():
             try:
                 self.thinker = thinker()
                 self.thinker.sendDailyReport()
@@ -179,16 +178,11 @@ class server():
                 self.log.logger.error("200. Error sending report")
                 self.log.logger.error(e)
 
-    def testing(self):
-        pass
-        # self.log.logger.info("99. Testing")
-
     def scheduler(self):
         schedule.every(4).hours.do(self.run_threaded, self.getStockData)
         schedule.every(10).minutes.do(self.run_threaded, self.getIntradayData)
         schedule.every(22).minutes.do(self.run_threaded, self.getOptionData)
         schedule.every().day.at("19:50").do(self.run_threaded, self.sendReport)
-#        schedule.every(3).minutes.do(self.run_threaded, self.think) moved to intraday fetcher due to conflicts in io
 
     def runServer(self):
         self.run_threaded(self.runScheduler)
@@ -342,7 +336,7 @@ class server():
         self.log.logger.info("999. - Shutdown completed")
         sys.exit()
 
-    def isworkday(self):
+    def ismarketopen(self):
         import datetime
         if (datetime.datetime.today().weekday() < 5) and ((datetime.datetime.now().time() > datetime.time(7, 30)) and
                                                           (datetime.datetime.now().time() < datetime.time(20, 00))):
