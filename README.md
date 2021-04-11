@@ -1,6 +1,7 @@
 # RobotRay
 
 Created by: Camilo Rojas - @camilo_rojas
+
 <a href="https://www.buymeacoffee.com/camilorojas" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 
 Python based robot trader on naked put strategy for selected accounts.  
