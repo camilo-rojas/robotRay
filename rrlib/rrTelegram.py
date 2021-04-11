@@ -49,7 +49,6 @@ class rrTelegram:
         if(str(self.chat_id) == str(self.chatid)):
             update.message.reply_text(
                 f"Hi {first_name}, RobotRay ready for you.")
-            context.bot.send_message(self.chat_id, text="Hello from context")
         else:
             update.message.reply_text("Hi you are not authorized")
 

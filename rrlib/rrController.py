@@ -58,25 +58,25 @@ class rrController():
             else:
                 response.append(self.db.getSource())
         elif (command == "printstocks"):
-            response.append("Stocks being tracked:")
+            response.append("Stocks being tracked")
             response.append(self.db.printStocks())
         elif (command == "printintra"):
-            response.append("Stocks current intraday data:")
+            response.append("Stocks current intraday data")
             response.append(self.db.printIntradayStocks())
         elif (command == "printoptions"):
-            response.append("Options data:")
+            response.append("Options data")
             response.append(self.db.printOptions())
         elif (command == "printopenp"):
-            response.append("Open Prospect data:")
+            response.append("Open Prospect data")
             response.append(self.thinker.printOpenProspects())
         elif (command == "printclosedp"):
-            response.append("Closed Prospect data:")
+            response.append("Closed Prospect data")
             response.append(self.thinker.printClosedProspects())
         elif (command == "printallp"):
-            response.append("All Prospect data sorted by PNL:")
+            response.append("All Prospect data sorted by PNL")
             response.append(self.thinker.printAllProspects())
         elif(command == "sendp"):
-            response.append("Sending daily report of prospects")
+            response.append("Sent daily report of prospects")
             self.thinker.sendDailyReport()
         elif(command == "status"):
             response.append("Status report RobotRay.")
