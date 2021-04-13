@@ -16,6 +16,7 @@ import time
 import sys
 import os
 import datetime
+import getpass
 
 
 class server():
@@ -180,8 +181,8 @@ class server():
 
     def scheduler(self):
         schedule.every(4).hours.do(self.run_threaded, self.getStockData)
-        schedule.every(10).minutes.do(self.run_threaded, self.getIntradayData)
-        schedule.every(22).minutes.do(self.run_threaded, self.getOptionData)
+        schedule.every(20).minutes.do(self.run_threaded, self.getIntradayData)
+        schedule.every(35).minutes.do(self.run_threaded, self.getOptionData)
         schedule.every().day.at("19:50").do(self.run_threaded, self.sendReport)
 
     def runServer(self):
@@ -247,6 +248,10 @@ class server():
                         self.log.logger.info("501. Current data fetched from: Interactive Brokers")
                     else:
                         self.log.logger.info("501. "+self.db.getSource())
+                # elif (command == "setpassword"):
+                #    passwd = getpass.getpass("Enter password:")
+                #    keyring.set_password("RobotRayIB", "camilo", passwd)
+                #    print(keyring.get_password("RobotRayIB", "camilo"))
                 elif (command == "printstocks"):
                     self.log.logger.info("550. Stocks being tracked:")
                     print(self.db.printStocks())
@@ -269,7 +274,7 @@ class server():
                     self.log.logger.info("140. Sending daily report of prospects")
                     thinker().sendDailyReport()
                 elif(command == "think"):
-                    self.log.logger.info("590. Launching thinker")
+                    self.log.logger.info("100. Launching thinker")
                     self.think()
                 elif(command == "status"):
                     self.log.logger.info(
@@ -369,6 +374,7 @@ if __name__ == '__main__':
         from rrlib.rrDb import rrDbManager
         from rrlib.rrThinker import thinker
         from rrlib.rrTelegram import rrTelegram
+        import keyring
         try:
             mainserver = server()
             mainserver.startup()

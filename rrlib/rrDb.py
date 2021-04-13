@@ -33,13 +33,14 @@ db = pw.SqliteDatabase('rrDb.db')
 class rrDbManager:
 
     def __init__(self):
-        from rrlib.rrLogger import logger
+        from rrlib.rrLogger import logger, TqdmToLogger
         import configparser
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
         self.stocks = config.get('stocks', 'stocks')
         self.source = config.get('datasource', 'source')
         self.log = logger()
+        self.tqdm_out = TqdmToLogger(self.log.logger)
         self.log.logger.debug("  DB Manager starting.  ")
 
     def initializeDb(self):
@@ -119,7 +120,8 @@ class rrDbManager:
         self.log.logger.debug("  DB Manager Get Stock data.  ")
         StockData.create_table()
         try:
-            for stock in tqdm(Stock.select(), desc="Getting Stock Data:", unit="Stock", ascii=False, ncols=120, leave=False):
+            # for stock in tqdm(Stock.select(), file=self.tqdm_out, desc="  Getting Stock Data:", unit="Stock", ascii=False, ncols=120, leave=False):
+            for stock in tqdm(Stock.select(), desc="  Getting Stock Data", unit="Stock", ascii=False, ncols=120, leave=False):
                 time.sleep(randint(2, 5))
                 self.log.logger.debug(
                     "  DB Manager Attempting to retreive data for "+stock.ticker)
@@ -164,17 +166,18 @@ class rrDbManager:
                     self.log.logger.debug("  DB Manager Built row:"+str(row))
                     StockData.insert(row).execute()
                     self.log.logger.debug(
-                        "  DB Manager Data retreived for "+stock.ticker)
-                    tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
-                               + " - rrLog - " +
-                               "INFO -     DONE - Data retreived for "+stock.ticker)
+                        "  DB Manager DONE Data retreived for "+stock.ticker)
+                    # tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                    #           + " - rrLog - " +
+                    #           "INFO -     DONE - Data retreived for "+stock.ticker)
                 except Exception:
                     self.log.logger.error(
                         "  DB Manager Error failed to fetch data for:"+stock.ticker)
-        except Exception:
+        except Exception as e:
             self.log.logger.error(
                 "  DB Manager Error failed to fetch data.  Please check internet connectivity or finviz.com for availability."
                 "  Using cached version.")
+            self.log.logger.error(e)
             return False
         # db.close()
         return True
@@ -218,9 +221,9 @@ class rrDbManager:
                         IntradayStockData.price: dataFetcher.iloc[0]['price'], IntradayStockData.pctChange: pctChange,
                         IntradayStockData.pctVol: dataFetcher.iloc[0]['%Volume'], IntradayStockData.timestamp: str(datetime.datetime.now()),
                         IntradayStockData.kpi: kpi}).execute()
-                    tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
-                               + " - rrLog - " +
-                               "INFO -     DONE - Stock intraday data retreived for "+stock.ticker)
+                    # tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                    #           + " - rrLog - " +
+                    #           "INFO -     DONE - Stock intraday data retreived for "+stock.ticker)
                     self.log.logger.debug(
                         "  DB Manager intraday data retreived for "+stock.ticker)
                 except Exception as e:
@@ -295,14 +298,14 @@ class rrDbManager:
         strike = 150
         OptionData.create_table()
         try:
-            for stock in tqdm(Stock.select(), desc="Getting Option Data:", unit="Stock", ascii=False, ncols=120, leave=False):
+            for stock in tqdm(Stock.select(), desc="Getting Option Data", unit="Stock", ascii=False, ncols=120, leave=False):
                 month = 3
                 time.sleep(randint(2, 5))
                 self.log.logger.debug(stock.ticker)
                 mbar = tqdm(total=6, desc="Getting Month Data: ",
                             unit="Month", ascii=False, ncols=120, leave=False)
-                tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
-                           + " - rrLog - INFO -   Retreving option data for "+stock.ticker)
+                # tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                #           + " - rrLog - INFO -   Retreving option data for "+stock.ticker)
                 while month < 9:
                     try:
                         # get strike info from stock data
@@ -386,16 +389,16 @@ class rrDbManager:
                                                                        OptionData.Rpotential: str(round(Rpotential, 3)),
                                                                        OptionData.kpi: str(round(kpi, 3)),
                                                                        OptionData.expectedPremium: str(round(expectedPremium, 3))}).execute()
-                            tqdm.write(str(datetime.datetime.now().strftime(
-                                '%Y-%m-%d %H:%M:%S.%f')[:-3])
-                                + " - rrLog - INFO -     DONE - Option data loaded for "+stock.ticker+" for month "+str(month))
+                            # tqdm.write(str(datetime.datetime.now().strftime(
+                            #    '%Y-%m-%d %H:%M:%S.%f')[:-3])
+                            #    + " - rrLog - INFO -     DONE - Option data loaded for "+stock.ticker+" for month "+str(month))
                             self.log.logger.debug("    DONE - Option data loaded: " +
                                                   stock.ticker+" for month "+str(month))
                         else:
                             self.log.logger.debug(
                                 "    NOT FOUND - No Option for this month")
-                            tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
-                                       + " - rrLog - INFO -     NOT FOUND - No option for "+stock.ticker+" for month "+str(month))
+                            # tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                            #           + " - rrLog - INFO -     NOT FOUND - No option for "+stock.ticker+" for month "+str(month))
 
                         month = month+1
                         mbar.update(1)

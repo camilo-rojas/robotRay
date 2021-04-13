@@ -1,6 +1,5 @@
 bs4
 pandas
-logging
 peewee
 configparser
 schedule
@@ -8,3 +7,5 @@ requests
 finvizfinance
 tqdm
 python-telegram-bot
+keyring
+logging

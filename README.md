@@ -51,7 +51,10 @@ The project architecture is the following:
 ### Utilities:
 - rrOptions - Support lib for Option formating and management
 - rrLogger - Logging
-- rrColorFormater - Coloring formating for Logging on Unix based systems
 
 ### Parametrization:
 - robotRay.ini - File with operational parameters and general configuration
+
+## Getting Started
+In a Python shell invoke the *python3 rrlib/rrServer.py* command to start the bot trading program.
+Currently no command line parameters are supported, but operation can be configured from the ini file in the rrlib directory.
