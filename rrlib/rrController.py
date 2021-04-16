@@ -6,6 +6,7 @@ robotRay server v1.0
 @author: camilorojas
 
 Controller class file that coordinates channel requests and executes with backend commands
+Initially attending Telegram service.   Future will connect server interaction
 """
 
 import threading
@@ -20,7 +21,7 @@ class rrController():
     def __init__(self, *args, **kwargs):
         # starting common services
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-        # starting logging
+        # starting logging service
         from rrlib.rrLogger import logger
         self.log = logger()
         # starting backend services

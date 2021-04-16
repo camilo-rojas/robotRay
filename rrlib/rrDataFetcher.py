@@ -21,19 +21,22 @@ import pandas as pd
 
 
 class StockDataFetcher():
-    # StockDataFetcher class
 
     def __init__(self, symbol):
+        # starting common services
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        # starting logging service
         from rrlib.rrLogger import logger
         self.symbol = symbol
         self.log = logger()
         self.log.logger.debug("    Init Stock Data Fetcher "+str(symbol))
-        # timeout import
+        # starting ini parameters
         import configparser
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
+        # Get datasouce from IB or Public
         self.source = config.get('datasource', 'source')
+        # For manual fetching set time out
         self.timeout = int(config['urlfetcher']['Timeout'])
 
     def getData(self):

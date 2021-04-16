@@ -33,15 +33,22 @@ db = pw.SqliteDatabase('rrDb.db')
 class rrDbManager:
 
     def __init__(self):
+        # Starting common services
         from rrlib.rrLogger import logger, TqdmToLogger
-        import configparser
-        config = configparser.ConfigParser()
-        config.read("rrlib/robotRay.ini")
-        self.stocks = config.get('stocks', 'stocks')
-        self.source = config.get('datasource', 'source')
+        # Get logging service
         self.log = logger()
         self.tqdm_out = TqdmToLogger(self.log.logger)
         self.log.logger.debug("  DB Manager starting.  ")
+        # starting ini parameters
+        import configparser
+        config = configparser.ConfigParser()
+        config.read("rrlib/robotRay.ini")
+        # Get list of stocks to track
+        self.stocks = config.get('stocks', 'stocks')
+        # Get datsource from pubic or ib
+        self.source = config.get('datasource', 'source')
+        # Get verbose option boolean
+        self.verbose = config['datasource']['verbose']
 
     def initializeDb(self):
         Stock.create_table()
@@ -84,29 +91,6 @@ class rrDbManager:
             self.log.logger.error(
                 "  DB Manager Error. Get Stock Table without table, try initializing.  ")
         # db.close()
-        return df
-
-    def printStocks(self):
-        df = pd.DataFrame(list(StockData.select(StockData.stock, StockData.price, StockData.prevClose,
-                                                StockData.perfDay, StockData.strike, StockData.salesqq,
-                                                StockData.sales5y, StockData.earnDate, StockData.targetPrice,
-                                                StockData.perfMonth, StockData.perfQuarter, StockData.perfYTD,
-                                                StockData.perfYear).order_by(StockData.timestamp.desc()).dicts()))
-        return df.head(len(self.getStocks().index))
-
-    def printIntradayStocks(self):
-        df = pd.DataFrame(list(IntradayStockData.select(IntradayStockData.stock, IntradayStockData.price,
-                                                        IntradayStockData.pctChange, IntradayStockData.pctVol,
-                                                        IntradayStockData.kpi).order_by(IntradayStockData.kpi.desc()).dicts()))
-        return df
-
-    def printOptions(self):
-        df = pd.DataFrame(list(OptionData.select(OptionData.stock, OptionData.kpi, OptionData.strike, OptionData.price,
-                                                 OptionData.expireDate, OptionData.contracts, OptionData.volume,
-                                                 OptionData.openInterest).where(
-            (OptionData.kpi != "0")
-            & (OptionData.timestamp > (datetime.datetime.now()-datetime.timedelta(days=3))))
-            .order_by(OptionData.kpi.desc()).dicts()))
         return df
 
     def getStockData(self):
@@ -167,9 +151,15 @@ class rrDbManager:
                     StockData.insert(row).execute()
                     self.log.logger.debug(
                         "  DB Manager DONE Data retreived for "+stock.ticker)
-                    # tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
-                    #           + " - rrLog - " +
-                    #           "INFO -     DONE - Data retreived for "+stock.ticker)
+                    if (self.verbose == "Yes"):
+                        tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                                   + " - rrLog - "
+                                   + "INFO -     DONE - Data retreived for " +
+                                   stock.ticker+", strike: "+str(strike)
+                                   + ", price:$" +
+                                   str(dataFetcher.iloc[68]['value']) +
+                                   ", sales growth QtQ:"+str(dataFetcher.iloc[53]['value'])
+                                   + ", earnings date: "+str(dataFetcher.iloc[65]['value'])+", target price:$"+str(dataFetcher.iloc[31]['value']))
                 except Exception:
                     self.log.logger.error(
                         "  DB Manager Error failed to fetch data for:"+stock.ticker)
@@ -221,9 +211,13 @@ class rrDbManager:
                         IntradayStockData.price: dataFetcher.iloc[0]['price'], IntradayStockData.pctChange: pctChange,
                         IntradayStockData.pctVol: dataFetcher.iloc[0]['%Volume'], IntradayStockData.timestamp: str(datetime.datetime.now()),
                         IntradayStockData.kpi: kpi}).execute()
-                    # tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
-                    #           + " - rrLog - " +
-                    #           "INFO -     DONE - Stock intraday data retreived for "+stock.ticker)
+                    if (self.verbose == "Yes"):
+                        tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                                   + " - rrLog - " +
+                                   "INFO -     DONE - Stock intraday data retreived for "+stock.ticker +
+                                   ", price:$"+str(dataFetcher.iloc[0]['price'])+", % price change:" + str(pctChange) +
+                                   "%, % volume change:"+str(dataFetcher.iloc[0]['%Volume']) +
+                                   "%, kpi:"+str(kpi))
                     self.log.logger.debug(
                         "  DB Manager intraday data retreived for "+stock.ticker)
                 except Exception as e:
@@ -304,8 +298,9 @@ class rrDbManager:
                 self.log.logger.debug(stock.ticker)
                 mbar = tqdm(total=6, desc="Getting Month Data: ",
                             unit="Month", ascii=False, ncols=120, leave=False)
-                # tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
-                #           + " - rrLog - INFO -   Retreving option data for "+stock.ticker)
+                if(self.verbose == "Yes"):
+                    tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                               + " - rrLog - INFO -   Retreving option data for "+stock.ticker)
                 while month < 9:
                     try:
                         # get strike info from stock data
@@ -376,7 +371,8 @@ class rrDbManager:
                             self.log.logger.debug(
                                 "  DB Manager Built row: strike="+str(strike)+" row:"+str(row))
                             OptionData.insert(row).on_conflict(conflict_target=[OptionData.stock, OptionData.expireDate, OptionData.strike],
-                                                               update={OptionData.price: round(price, 3), OptionData.openPrice: dataFetcher.iloc[1]['value'],
+                                                               update={OptionData.price: round(price, 3),
+                                                                       OptionData.openPrice: dataFetcher.iloc[1]['value'],
                                                                        OptionData.bid: dataFetcher.iloc[2]['value'],
                                                                        OptionData.ask: dataFetcher.iloc[3]['value'],
                                                                        OptionData.dayRange: dataFetcher.iloc[6]['value'],
@@ -389,16 +385,20 @@ class rrDbManager:
                                                                        OptionData.Rpotential: str(round(Rpotential, 3)),
                                                                        OptionData.kpi: str(round(kpi, 3)),
                                                                        OptionData.expectedPremium: str(round(expectedPremium, 3))}).execute()
-                            # tqdm.write(str(datetime.datetime.now().strftime(
-                            #    '%Y-%m-%d %H:%M:%S.%f')[:-3])
-                            #    + " - rrLog - INFO -     DONE - Option data loaded for "+stock.ticker+" for month "+str(month))
+                            if (self.verbose == "Yes"):
+                                tqdm.write(str(datetime.datetime.now().strftime(
+                                    '%Y-%m-%d %H:%M:%S.%f')[:-3])
+                                    + " - rrLog - INFO -     DONE - Option data loaded for "+stock.ticker
+                                    + ", strike:$"+str(strike)+", for month "+str(month))
                             self.log.logger.debug("    DONE - Option data loaded: " +
                                                   stock.ticker+" for month "+str(month))
                         else:
                             self.log.logger.debug(
                                 "    NOT FOUND - No Option for this month")
-                            # tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
-                            #           + " - rrLog - INFO -     NOT FOUND - No option for "+stock.ticker+" for month "+str(month))
+                            if (self.verbose == "Yes"):
+                                tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                                           + " - rrLog - INFO -     NOT FOUND - No option for "+stock.ticker+", strike:$"+str(strike) +
+                                           ", for month "+str(month))
 
                         month = month+1
                         mbar.update(1)
@@ -456,6 +456,33 @@ class rrDbManager:
         # db.close()
         return True
 
+# Print functions for console or dataframe return from stock, intraday, option list
+
+    def printStocks(self):
+        df = pd.DataFrame(list(StockData.select(StockData.stock, StockData.price, StockData.prevClose,
+                                                StockData.perfDay, StockData.strike, StockData.salesqq,
+                                                StockData.sales5y, StockData.earnDate, StockData.targetPrice,
+                                                StockData.perfMonth, StockData.perfQuarter, StockData.perfYTD,
+                                                StockData.perfYear).order_by(StockData.timestamp.desc()).dicts()))
+        return df.head(len(self.getStocks().index))
+
+    def printIntradayStocks(self):
+        df = pd.DataFrame(list(IntradayStockData.select(IntradayStockData.stock, IntradayStockData.price,
+                                                        IntradayStockData.pctChange, IntradayStockData.pctVol,
+                                                        IntradayStockData.kpi).order_by(IntradayStockData.kpi.desc()).dicts()))
+        return df
+
+    def printOptions(self):
+        df = pd.DataFrame(list(OptionData.select(OptionData.stock, OptionData.kpi, OptionData.strike, OptionData.price,
+                                                 OptionData.expireDate, OptionData.contracts, OptionData.volume,
+                                                 OptionData.openInterest).where(
+            (OptionData.kpi != "0")
+            & (OptionData.timestamp > (datetime.datetime.now()-datetime.timedelta(days=3))))
+            .order_by(OptionData.kpi.desc()).dicts()))
+        return df
+
+
+# Data classes from peewee
 # Stock entity
 
 
