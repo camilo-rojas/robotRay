@@ -69,19 +69,22 @@ class thinker:
         self.ExpPrice2Ask = config['thinker']['ExpPrice2Ask']
         # is telegram bot enabled for commands
         self.startbot = config.get('telegram', 'startbot')
+        # Get verbose option boolean
+        self.verbose = config['thinker']['verbose']
         self.log.logger.debug("  Thinker module starting.  ")
 
         # print debug init parameters
-        self.log.logger.debug(
-            "     105. Thinker operational parameters: Day Percentage Change for Green day:" +
-            str(float(self.dayPriceChgGreen)*100)
-            + "%, for Red Day:" + str(float(self.dayPriceChgRed)*100)+"%")
-        self.log.logger.debug("     Monthly Expected Premium:" + str(float(self.monthlyPremium)*100)
-                              + "%, Simple Moving Average 200 for Green Day:" +
-                              str(float(self.smaGreen)*100) +
-                              "%, for Red Day:" + str(float(self.smaRed*100))+"%")
-        self.log.logger.debug("     Available funds in portfolio: USD$" +
-                              str(float(self.R)/0.02)+", R (risk money per trade):USD$" + self.R)
+        if(self.verbose == "Yes"):
+            self.log.logger.info(
+                "     105. Thinker operational parameters: Day Percentage Change for Green day:" +
+                str(float(self.dayPriceChgGreen)*100)
+                + "%, for Red Day:" + str(float(self.dayPriceChgRed)*100)+"%")
+            self.log.logger.info("     Monthly Expected Premium:" + str(float(self.monthlyPremium)*100)
+                                 + "%, Simple Moving Average 200 for Green Day:" +
+                                 str(float(self.smaGreen)*100) +
+                                 "%, for Red Day:" + str(float(self.smaRed*100))+"%")
+            self.log.logger.info("     Available funds in portfolio: USD$" +
+                                 str(float(self.R)/0.02)+", R (risk money per trade):USD$" + self.R)
 
     def evaluateProspects(self):
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -91,17 +94,19 @@ class thinker:
 
         try:
             for stock in tqdm(IntradayStockData.select(), desc="Getting KPI's of Stock Data:", unit="Stock", ascii=False, ncols=120, leave=False):
-                # tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
-                #           + " - rrLog - " +
-                #           "INFO -      Thinker:" + str(float(stock.kpi)) + " "
-                #           + str(float(self.IntradayKPIGreen)) + " "
-                #           + str(float(stock.pctChange))+" "+stock.stock)
+                # if(self.verbose == "Yes"):
+                #    tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                #               + " - rrLog - " +
+                #               "INFO -      Thinker:" + str(float(stock.kpi)) + " "
+                #               + str(float(self.IntradayKPIGreen)) + " "
+                #               + str(float(stock.pctChange))+" "+stock.stock)
                 # Find the strike price
                 strike = StockData.select(StockData.strike).where(
-                    StockData.stock == stock.stock).get().strike
-                # tqdm.write("Green 1 and 2:"+str(float(stock.pctChange) < float(self.dayPriceChgGreen)) +
+                    StockData.stock == stock.stock).order_by(StockData.id.desc()).get().strike
+                # if(self.verbose == "Yes"):
+                # tqdm.write("Evaluate Green Day conditions 1 and 2:"+str(float(stock.pctChange) < float(self.dayPriceChgGreen)) +
                 #           " "+str(float(stock.kpi) > float(self.IntradayKPIGreen)))
-                # tqdm.write("Yellow 1 and 2:"+str(float(stock.pctChange) < float(self.dayPriceChgRed)) +
+                # tqdm.write("Evaluate Yellow Day conditions 1 and 2:"+str(float(stock.pctChange) < float(self.dayPriceChgRed)) +
                 #           " "+str(float(stock.kpi) > float(self.IntradayKPIGreen)))
                 # Green day decline
                 if float(stock.pctChange) < float(self.dayPriceChgGreen) and float(stock.kpi) > float(self.IntradayKPIGreen):

@@ -8,4 +8,5 @@ finvizfinance
 tqdm
 python-telegram-bot
 keyring
+ib_insync
 logging
