@@ -26,15 +26,15 @@ class rrController():
         self.log = logger()
         # starting backend services
         from rrlib.rrDb import rrDbManager
-        from rrlib.rrThinker import thinker
         self.db = rrDbManager()
-        self.thinker = thinker()
         # starting ini parameters
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
         self.log.logger.debug("Initialization finished robotRay controller")
 
-    def command(self, command=""):
+    def botcommand(self, command=""):
+        from rrlib.rrThinker import thinker
+        self.thinker = thinker()
         response = []
         command = command.lower()
         if (command == "intro" or command == "about"):
@@ -95,3 +95,116 @@ class rrController():
         else:
             response.append("Unknown command, try help for commands")
         return response
+
+    def consolecommand(self, command=""):
+        response = []
+        command = command.lower()
+        try:
+            if (command == "intro" or command == "about"):
+                response.append("self.intro()")
+            elif(command == "quit" or command == "exit"):
+                if input("\n998. Really quit? (y/n)>").lower().startswith('y'):
+                    response.append("self.shutdown()")
+            elif(command == "help"):
+                response.append("")
+                response.append(
+                    "================================================================")
+                response.append(
+                    "RobotRay help menu - commands and manual override options")
+                response.append(
+                    "================================================================")
+                response.append("")
+                response.append(
+                    "995. General Commands: help, clear, status, source, jobs, isdbinuse, quit, exit, intro, about")
+                response.append(
+                    "================================================================")
+                response.append(
+                    "995. The following are scheduled automatically, run only for override")
+                response.append(
+                    "995. Stock Data refresh manual commands: getstockdata, getintradaydata")
+                response.append(
+                    "995. Option Data refresh manual commands: getoptiondata, think")
+                response.append(
+                    "================================================================")
+                response.append(
+                    "995. Stock Data info commands: printstocks, printintra")
+                response.append("995. Option Data info commands: printoptions")
+                response.append(
+                    "995. Run prospect info: printallp, printopenp, printclosedp, sendp")
+                response.append(
+                    "================================================================")
+                response.append(
+                    "995. Statistics for bot operations: report, reporty, reportytd, reportsm, reportw")
+            elif(command == "clear"):
+                response.append("")
+                if sys.platform == 'win32':
+                    os.system("cls")
+                else:
+                    os.system("clear")
+            elif(command == "getoptiondata"):
+                response.append("self.getOptionData()")
+                response.append(
+                    "20. This will take a couple of minutes, please don't cancel")
+            elif(command == "isdbinuse"):
+                response.append("")
+                if(self.db.isDbInUse()):
+                    response.append("994. DB is currently: Not used by any thread")
+                else:
+                    response.append("994. DB is currently: In Use by thread")
+            elif (command == "source"):
+                response.append("")
+                if (self.db.getSource() == "public"):
+                    response.append("501. Current data fetched from: Finviz & Yahoo")
+                elif (self.db.getSource() == "ib"):
+                    response.append("501. Current data fetched from: Interactive Brokers")
+                else:
+                    response.append("501. "+self.db.getSource())
+            # elif (command == "setpassword"):
+            #    passwd = getpass.getpass("Enter password:")
+            #    keyring.set_password("RobotRayIB", "camilo", passwd)
+            #    print(keyring.get_password("RobotRayIB", "camilo"))
+            elif (command == "printstocks"):
+                response.append("print(self.db.printStocks())")
+                response.append("550. Stocks being tracked:")
+            elif (command == "printintra"):
+                response.append("print(self.db.printIntradayStocks())")
+                response.append("560. Stocks current intraday data:")
+            elif (command == "printoptions"):
+                response.append("print(self.db.printOptions())")
+                response.append("570. Options data:")
+            elif (command == "printopenp"):
+                response.append("print(thinker().printOpenProspects())")
+                response.append("130. Open Prospect data:")
+            elif (command == "printclosedp"):
+                response.append("print(thinker().printClosedProspects())")
+                response.append("130. Closed Prospect data:")
+            elif (command == "printallp"):
+                response.append("print(thinker().printAllProspects())")
+                response.append("130. Prospect data:")
+            elif(command == "sendp"):
+                response.append("thinker().sendDailyReport()")
+                response.append("140. Sending daily report of prospects")
+            elif(command == "think"):
+                response.append("self.think()")
+                response.append("100. Launching thinker")
+            elif(command == "status"):
+                response.append("self.status()")
+            elif(command == "getstockdata"):
+                response.append("self.getStockData()")
+                response.append(
+                    "10. This will take a couple of minutes, please don't cancel")
+            elif(command == "getintradaydata"):
+                response.append("self.getIntradayData()")
+                response.append("30. This will take a minute, please don't cancel")
+            elif(command == "jobs"):
+                response.append("")
+                response.append("996. Currently running: " +
+                                str(threading.active_count())+" threads.")
+            elif(command == ""):
+                pass
+            else:
+                response.append("")
+                response.append("Unknown command, try help for commands")
+            return response
+        except Exception as e:
+            self.log.logger.error(e)

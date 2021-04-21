@@ -43,6 +43,9 @@ class rrDbManager:
         import configparser
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
+        # db filename to confirm it exists
+        self.dbFilename = config.get('DB', 'filename')
+        self.initializeDb()
         # Get list of stocks to track
         self.stocks = config.get('stocks', 'stocks')
         # Get datsource from pubic or ib
@@ -87,9 +90,10 @@ class rrDbManager:
         try:
             for stock in Stock.select():
                 df = df.append({'ticker': stock.ticker}, ignore_index=True)
-        except Exception:
+        except Exception as e:
             self.log.logger.error(
                 "  DB Manager Error. Get Stock Table without table, try initializing.  ")
+            self.log.logger.error(e)
         # db.close()
         return df
 

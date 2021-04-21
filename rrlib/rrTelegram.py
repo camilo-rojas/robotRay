@@ -66,7 +66,7 @@ class rrTelegram:
     # function to handle normal text
     def textCommand(self, update, context):
         text_received = update.message.text
-        response = self.cont.command(text_received)
+        response = self.cont.botcommand(text_received)
         for x in response:
             update.message.reply_text(f'{x}')
 
