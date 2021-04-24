@@ -51,7 +51,7 @@ class rrDbManager:
         # Get datsource from pubic or ib
         self.source = config.get('datasource', 'source')
         # Get verbose option boolean
-        self.verbose = config['datasource']['verbose']
+        self.verbose = config.get('datasource', 'verbose')
 
     def initializeDb(self):
         Stock.create_table()
@@ -102,7 +102,6 @@ class rrDbManager:
             status = db.connect()
         except Exception:
             status = False
-        # db.close()
         return status
 
     def getSource(self):
@@ -119,7 +118,6 @@ class rrDbManager:
             stocks.append({'ticker': st})
         self.log.logger.debug(stocks)
         Stock.insert_many(stocks).execute()
-        # db.close()
 
     def getStocks(self):
         df = pd.DataFrame(columns=['ticker'])
@@ -130,15 +128,9 @@ class rrDbManager:
             self.log.logger.error(
                 "  DB Manager Error. Get Stock Table without table, try initializing.  ")
             self.log.logger.error(e)
-        # db.close()
         return df
 
     def getStockData(self):
-        # try:
-        #    db.connect()
-        # except Exception:
-        #    self.log.logger.warning(" DB already opened ")
-        #    return False
         from rrlib.rrDataFetcher import StockDataFetcher as stckFetcher
         from rrlib.rrDataFetcher import OptionDataFetcher as optFetcher
         from random import randint
@@ -153,12 +145,21 @@ class rrDbManager:
                 try:
                     dataFetcher = stckFetcher(stock.ticker).getData()
                     price = float(dataFetcher.iloc[68]['value'])
-                    perfWeek = float(
-                        dataFetcher.iloc[9]['value'].strip('%'))/100
-                    perfMonth = float(
-                        dataFetcher.iloc[15]['value'].strip('%'))/100
-                    perfQuarter = float(
-                        dataFetcher.iloc[21]['value'].strip('%'))/100
+                    if dataFetcher.iloc[9]['value'] == "-":
+                        perfWeek = 0
+                    else:
+                        perfWeek = float(
+                            dataFetcher.iloc[9]['value'].strip('%'))/100
+                    if dataFetcher.iloc[15]['value'] == "-":
+                        perfMonth = 0
+                    else:
+                        perfMonth = float(
+                            dataFetcher.iloc[15]['value'].strip('%'))/100
+                    if dataFetcher.iloc[21]['value'] == "-":
+                        perfQuarter = 0
+                    else:
+                        perfQuarter = float(
+                            dataFetcher.iloc[21]['value'].strip('%'))/100
                     # strikePctg import
                     import configparser
                     config = configparser.ConfigParser()
@@ -174,10 +175,12 @@ class rrDbManager:
                     elif strike > 1000:
                         strike = round(strike, -2)
 
-                    strikes = optFetcher(stock.ticker).getStrikes()
-                    if strike not in strikes.values:
-                        strike = min(strikes.values, key=lambda x: abs(x-strike))
-
+                    try:
+                        strikes = optFetcher(stock.ticker).getStrikes()
+                        if strike not in strikes.values:
+                            strike = min(strikes.values, key=lambda x: abs(x-strike))
+                    except Exception:
+                        self.log.logger.warning("  Exception with strikes for:"+stock.ticker)
                     row = {'stock': stock.ticker, 'strike': str(strike), 'timestamp': str(datetime.datetime.now()),
                            'price': dataFetcher.iloc[68]['value'], 'prevClose': dataFetcher.iloc[62]['value'],
                            'salesqq': dataFetcher.iloc[53]['value'], 'sales5y': dataFetcher.iloc[47]['value'],
@@ -205,9 +208,10 @@ class rrDbManager:
                                    str(dataFetcher.iloc[68]['value']) +
                                    ", sales growth QtQ:"+str(dataFetcher.iloc[53]['value'])
                                    + ", earnings date: "+str(dataFetcher.iloc[65]['value'])+", target price:$"+str(dataFetcher.iloc[31]['value']))
-                except Exception:
+                except Exception as e:
                     self.log.logger.error(
                         "  DB Manager Error failed to fetch data for:"+stock.ticker)
+                    self.log.logger.error(e)
         except Exception as e:
             self.log.logger.error(
                 "  DB Manager Error failed to fetch data.  Please check internet connectivity or finviz.com for availability."

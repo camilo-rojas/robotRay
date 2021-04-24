@@ -256,7 +256,7 @@ class rrController():
                 self.db.getIntradayData()
                 self.log.logger.info(
                     "30. DONE - Intraday data successfully fetched")
-                self.rrPutSellStrategy()
+                self.sellputsstrategy()
             except Exception as e:
                 self.log.logger.error("30. Error fetching Intraday data")
                 self.log.logger.error(e)

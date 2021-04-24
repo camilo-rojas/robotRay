@@ -49,31 +49,38 @@ class rrGoldenStrategy:
                 sma200 = st.sma200
                 times = st.timestamp
                 # get stock data from 2 days earlier to find golden cross or death cross
-                for i in [i for i, x in enumerate(times) if x < (datetime.datetime.now()-datetime.timedelta(days=2))]:
-                    position = i
-                    break
-                # find trend
-                sma200now = float(sma200[0].strip("%"))/100
-                sma200old = float(sma200[position].strip("%"))/100
-                sma50now = float(sma50[0].strip("%"))/100
-                sma50old = float(sma50[position].strip("%"))/100
+                try:
+                    for i in [i for i, x in enumerate(times) if x < (datetime.datetime.now()-datetime.timedelta(days=2))]:
+                        position = i
+                        break
+                    # find trend
+                    sma200now = float(sma200[0].strip("%"))/100
+                    sma200old = float(sma200[position].strip("%"))/100
+                    sma50now = float(sma50[0].strip("%"))/100
+                    sma50old = float(sma50[position].strip("%"))/100
 
-                if sma200now > sma50now:
-                    trend = "downtrend"
-                elif sma200now < sma50now:
-                    trend = "uptrend"
+                    if sma200now > sma50now:
+                        trend = "downtrend"
+                    elif sma200now < sma50now:
+                        trend = "uptrend"
 
-                # look for golden or death and raise communication
-                if sma200now > sma50now and sma200old < sma50old:
-                    self.log.logger.info("  Golden Strategy found a DEATH CROSS in:"+stock.stock)
-                    self.communicateProspects(stock.stock, "Death Cross")
-                elif sma200now < sma50now and sma200old > sma50old:
-                    self.log.logger.info("  Golden Strategy found a GOLDEN CROSS in:"+stock.stock)
-                    self.communicateProspects(stock.stock, "Golden Cross")
-                self.log.logger.debug("Stock:"+stock.stock+", is "+trend+", 50:"+str(sma50[0])+", "+str(sma50[position]) + ", 200:" + str(
-                    sma200[0])+", "+str(sma200[position])+"; time:"+str(times[0])+", "+str(times[position]))
+                    # look for golden or death and raise communication
+                    if sma200now > sma50now and sma200old < sma50old:
+                        self.log.logger.info(
+                            "  Golden Strategy found a DEATH CROSS in:"+stock.stock)
+                        self.communicateProspects(stock.stock, "Death Cross")
+                    elif sma200now < sma50now and sma200old > sma50old:
+                        self.log.logger.info(
+                            "  Golden Strategy found a GOLDEN CROSS in:"+stock.stock)
+                        self.communicateProspects(stock.stock, "Golden Cross")
+                    self.log.logger.debug("Stock:"+stock.stock+", is "+trend+", 50:"+str(sma50[0])+", "+str(sma50[position]) + ", 200:" + str(
+                        sma200[0])+", "+str(sma200[position])+"; time:"+str(times[0])+", "+str(times[position]))
+                except Exception:
+                    self.log.logger.warning("    Golden Strategy for " +
+                                            stock.stock+", not enough historic info")
+
         except Exception as e:
-            self.log.logger.error("     Golden Strategy evaluation error")
+            self.log.logger.error("     Golden Strategy evaluation error:")
             self.log.logger.error(e)
 
     def communicateProspects(self, stock, gord):

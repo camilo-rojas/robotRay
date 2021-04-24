@@ -58,15 +58,16 @@ class server():
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
         self.log.logger.info(
-            "01. Building db elegible stocks for Option scanning")
+            "01. Building db elegible stocks ")
         self.db = rrDbManager()
         self.db.startServerRun()
+        self.db.initializeStocks()
         self.log.logger.info(
-            "01. DONE - Building db elegible stocks for Option scanning")
-        self.log.logger.info("02. Setting dates and confirming option ")
+            "01. DONE - Building db elegible stocks for strategies")
+        self.log.logger.info("02. Setting dates for options")
         self.db.initializeExpirationDate()
         self.log.logger.info(
-            "02. DONE - Setting dates and confirming option ")
+            "02. DONE - Setting dates for options")
         self.log.logger.info("03. Controller startup sequence")
         self.controller = rrController()
         self.log.logger.info("03. DONE - Controller startup sequence")
