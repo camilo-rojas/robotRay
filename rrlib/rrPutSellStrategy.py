@@ -71,7 +71,7 @@ class rrPutSellStrategy:
         self.startbot = config.get('telegram', 'startbot')
         # Get verbose option boolean
         self.verbose = config['thinker']['verbose']
-        self.log.logger.debug("  Thinker module starting.  ")
+        self.log.logger.debug("  Put Sell Strategy module starting.  ")
 
     def evaluateProspects(self):
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -150,7 +150,7 @@ class rrPutSellStrategy:
                                    " with strike:"+strike + ", in the last 4 days")
 
         except Exception as e:
-            self.log.logger.error("     Thinker evaluation error")
+            self.log.logger.error("     Put Sell Strategy evaluation error")
             self.log.logger.error(e)
 
     def prospectFormatter(self, stock="STOCK", expireDate="YYYY-MM-DD", strike="100", price="1", contracts="1",

@@ -15,6 +15,7 @@ import os
 import configparser
 import datetime
 from rrlib.rrPutSellStrategy import rrPutSellStrategy
+from rrlib.rrGolgenStrategy import rrGoldenStrategy
 
 
 class rrController():
@@ -28,6 +29,7 @@ class rrController():
         from rrlib.rrDb import rrDbManager
         self.db = rrDbManager()
         self.rrPutSellStrategy = rrPutSellStrategy()
+        self.rrGoldenStrategy = rrGoldenStrategy()
         # starting ini parameters
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
@@ -126,7 +128,7 @@ class rrController():
                 response.append(
                     "995. Stock Data refresh manual commands: getstockdata, getintradaydata")
                 response.append(
-                    "995. Option Data refresh manual commands: getoptiondata, think")
+                    "995. Option Data refresh manual commands: getoptiondata, sellputs")
                 response.append(
                     "----------------------------------------------------------------")
                 response.append(
@@ -146,8 +148,6 @@ class rrController():
                     os.system("cls")
                 else:
                     os.system("clear")
-            elif(command == "getoptiondata"):
-                self.getOptionData()
             elif(command == "isdbinuse"):
                 response.append("")
                 if(self.db.isDbInUse()):
@@ -186,18 +186,22 @@ class rrController():
                 response.append("130. Prospect data:")
             elif(command == "sendp"):
                 self.rrPutSellStrategy.sendDailyReport()
-            elif(command == "think"):
-                self.think()
             elif(command == "status"):
                 self.status()
             elif(command == "getstockdata"):
                 self.getStockData()
             elif(command == "getintradaydata"):
                 self.getIntradayData()
+            elif(command == "getoptiondata"):
+                self.getOptionData()
             elif(command == "jobs"):
                 response.append("")
                 response.append("996. Currently running: " +
                                 str(threading.active_count())+" threads.")
+            elif(command == "golden"):
+                self.goldenstrategy()
+            elif(command == "sellputs"):
+                self.sellputsstrategy()
             elif(command == ""):
                 pass
             else:
@@ -226,6 +230,7 @@ class rrController():
                 self.db.getStockData()
                 self.log.logger.info(
                     "10. DONE - Stock data fetched")
+                self.rrGoldenStrategy.evaluateProspects()
                 self.db.updateServerRun(lastStockDataUpdate=datetime.datetime.now())
             except Exception as e:
                 self.log.logger.error("10. Error fetching daily stock data")
@@ -251,14 +256,27 @@ class rrController():
                 self.db.getIntradayData()
                 self.log.logger.info(
                     "30. DONE - Intraday data successfully fetched")
-                self.think()
+                self.rrPutSellStrategy()
             except Exception as e:
                 self.log.logger.error("30. Error fetching Intraday data")
                 self.log.logger.error(e)
 
-    def think(self):
+    def goldenstrategy(self):
+        self.log.logger.info("200. Initiating Golden Strategy ...")
+        if self.ismarketopen() or self.oth == "Yes":
+            try:
+                self.log.logger.info(
+                    "     210. Evaluating changes in SMA50 and SMA200 for intersections of elegible stocks")
+                self.rrGoldenStrategy.evaluateProspects()
+                self.db.updateServerRun(lastThinkUpdate=datetime.datetime.now())
+                self.log.logger.info("200. DONE - Finished strategy")
+            except Exception as e:
+                self.log.logger.error("200. Error strategy")
+                self.log.logger.error(e)
+
+    def sellputsstrategy(self):
         self.log.logger.info(
-            "100. Initiating R's catcher...")
+            "100. Initiating Sell Puts Strategy ...")
         if self.ismarketopen() or self.oth == "Yes":
             try:
                 self.log.logger.info(
@@ -274,9 +292,9 @@ class rrController():
                     "     140. Communicating closings")
                 self.rrPutSellStrategy.communicateClosing()
                 self.db.updateServerRun(lastThinkUpdate=datetime.datetime.now())
-                self.log.logger.info("100. DONE - Finished thinking")
+                self.log.logger.info("100. DONE - Finished Sell Puts Strategy")
             except Exception as e:
-                self.log.logger.error("100. Error thinking")
+                self.log.logger.error("100. Error Sell Puts Strategy")
                 self.log.logger.error(e)
 
     def sendReport(self):
