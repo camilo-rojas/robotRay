@@ -15,8 +15,6 @@ import schedule
 import time
 import sys
 import os
-import datetime
-import getpass
 
 
 class server():
@@ -33,11 +31,6 @@ class server():
         self.runCycle = 0
         self.threads = []
         self.running = True
-        self.startupTime = datetime.datetime.now()
-        self.stockDataUpdateTime = datetime.datetime.now()
-        self.optionDataUpdateTime = datetime.datetime.now()
-        self.thinkUpdateTime = datetime.datetime.now()
-        self.dbFilename = ""
         self.log.logger.info("Initialization finished robotRay server")
 
     def intro(self):
@@ -67,110 +60,42 @@ class server():
         self.log.logger.info(
             "01. Building db elegible stocks for Option scanning")
         self.db = rrDbManager()
+        self.db.startServerRun()
         self.log.logger.info(
             "01. DONE - Building db elegible stocks for Option scanning")
         self.log.logger.info("02. Setting dates and confirming option ")
         self.db.initializeExpirationDate()
         self.log.logger.info(
             "02. DONE - Setting dates and confirming option ")
-        self.log.logger.info("03. Stock data startup sequence")
-        # self.getStockData()
-        self.log.logger.info("03. DONE - Stock data startup sequence")
+        self.log.logger.info("03. Controller startup sequence")
+        self.controller = rrController()
+        self.log.logger.info("03. DONE - Controller startup sequence")
         self.log.logger.info("04. Scheduling daily scanners")
+        self.stockdatainterval = int(config.get('scheduler', 'stockdatainterval'))
+        self.stockintrainterval = int(config.get('scheduler', 'stockintrainterval'))
+        self.stockoptioninverval = int(config.get('scheduler', 'stockoptioninverval'))
+        self.dailyreport = config.get('scheduler', 'dailyreport')
         self.scheduler()
         self.log.logger.info("04. DONE - Scheduling daily scanners")
         self.startbot = config.get('telegram', 'startbot')
         if (self.startbot == "Yes"):
             self.log.logger.info("05. Starting Telegram bot")
             self.bot = rrTelegram()
+            self.db.updateServerRun(telegramBotEnabled="Yes")
             self.log.logger.info("05. DONE - Starting Telegram bot")
         self.log.logger.info(
             "-- Finished Startup robotRay server. Starting schedule.")
         self.log.logger.info("")
 
-    def getStockData(self):
-        self.log.logger.info("10. Getting stock data, daily process ")
-        if self.ismarketopen():
-            # if True:
-            try:
-                self.db.getStockData()
-                self.log.logger.info(
-                    "10. DONE - Stock data fetched")
-                self.stockDataUpdateTime = datetime.datetime.now()
-            except Exception as e:
-                self.log.logger.error("10. Error fetching daily stock data")
-                self.log.logger.error(e)
-
-    def getOptionData(self):
-        self.log.logger.info("20. Getting Option Data")
-        if self.ismarketopen():
-            # if True:
-            try:
-                self.db.getOptionData()
-                self.log.logger.info(
-                    "20. DONE - Option data successfully fetched")
-                self.optionDataUpdateTime = datetime.datetime.now()
-            except Exception as e:
-                self.log.logger.error("20. Error fetching daily option data")
-                self.log.logger.error(e)
-
-    def getIntradayData(self):
-        self.log.logger.info("30. Getting Intraday Data")
-        self.runCycle = self.runCycle + 1
-        # if True:
-        if self.ismarketopen():
-            try:
-                self.db.getIntradayData()
-                self.log.logger.info(
-                    "30. DONE - Intraday data successfully fetched")
-                self.stockDataUpdateTime = datetime.datetime.now()
-                # run option data fetchers every three iterations
-                self.think()
-            except Exception as e:
-                self.log.logger.error("30. Error fetching Intraday data")
-                self.log.logger.error(e)
-
-    def think(self):
-        self.log.logger.info(
-            "100. Initiating R's catcher...")
-        if self.ismarketopen():
-            try:
-                self.thinker = thinker()
-                self.thinkUpdateTime = datetime.datetime.now()
-                self.log.logger.info(
-                    "     110. Evaluating daily drops and pricing opptys for elegible stocks")
-                self.thinker.evaluateProspects()
-                self.log.logger.info(
-                    "     120. Updating pricing for existing prospects")
-                self.thinker.updatePricingProspects()
-                self.log.logger.info(
-                    "     130. Communicating prospects")
-                self.thinker.communicateProspects()
-                self.log.logger.info(
-                    "     140. Communicating closings")
-                self.thinker.communicateClosing()
-                self.log.logger.info("100. DONE - Finished thinking")
-            except Exception as e:
-                self.log.logger.error("100. Error thinking")
-                self.log.logger.error(e)
-
-    def sendReport(self):
-        self.log.logger.info(
-            "200. Sending report to IFTTT")
-        if self.ismarketopen():
-            try:
-                self.thinker = thinker()
-                self.thinker.sendDailyReport()
-                self.log.logger.info("200. DONE - Finished sending report")
-            except Exception as e:
-                self.log.logger.error("200. Error sending report")
-                self.log.logger.error(e)
-
     def scheduler(self):
-        schedule.every(4).hours.do(self.run_threaded, self.getStockData)
-        schedule.every(20).minutes.do(self.run_threaded, self.getIntradayData)
-        schedule.every(35).minutes.do(self.run_threaded, self.getOptionData)
-        schedule.every().day.at("19:50").do(self.run_threaded, self.sendReport)
+        schedule.every(self.stockdatainterval).hours.do(
+            self.run_threaded, self.controller.getStockData)
+        schedule.every(self.stockintrainterval).minutes.do(
+            self.run_threaded, self.controller.getIntradayData)
+        schedule.every(self.stockoptioninverval).minutes.do(
+            self.run_threaded, self.controller.getOptionData)
+        schedule.every().day.at(self.dailyreport).do(
+            self.run_threaded, self.controller.sendReport)
 
     def runServer(self):
         self.run_threaded(self.runScheduler)
@@ -179,7 +104,7 @@ class server():
         while True:
             try:
                 command = input("> ")
-                response = rrController().consolecommand(command)
+                response = self.controller.consolecommand(command)
                 if len(response) > 0:
                     for message in response[1:]:
                         self.log.logger.info(message)
@@ -189,9 +114,6 @@ class server():
                 self.running = False
                 self.shutdown()
                 break
-
-    def status(self):
-        print("Status is ok")
 
     def runScheduler(self):
         while self.running:
@@ -206,19 +128,8 @@ class server():
 
     def shutdown(self):
         self.log.logger.info("999. - Shutdown initiated")
-        # for threadtokill in self.threads:
-        #    threadtokill.join()
         self.log.logger.info("999. - Shutdown completed")
         sys.exit()
-
-    def ismarketopen(self):
-        import datetime
-        if (datetime.datetime.today().weekday() < 5) and ((datetime.datetime.now().time() > datetime.time(7, 30)) and
-                                                          (datetime.datetime.now().time() < datetime.time(20, 00))):
-            return True
-        else:
-            self.log.logger.info("998. - Market closed or not a working day")
-            return False
 
 # Exit signal management from server handler
 
@@ -242,10 +153,9 @@ if __name__ == '__main__':
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
         from rrlib.rrLogger import logger
         from rrlib.rrDb import rrDbManager
-        from rrlib.rrThinker import thinker
         from rrlib.rrTelegram import rrTelegram
+        from rrlib.rrPutSellStrategy import rrPutSellStrategy
         from rrlib.rrController import rrController
-        import keyring
         try:
             mainserver = server()
             mainserver.startup()

@@ -105,3 +105,33 @@ class OptionDataFetcher():
             self.log.logger.error("   DataFetcher source error:"+self.source)
             df = pd.DataFrame()
         return df
+
+    def getStrikes(self):
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        if(self.source == "public"):
+            from rrlib.rrDFPublic import OptionDFPublic as odfp
+            df = odfp(self.symbol).getStrikes()
+            self.log.logger.debug("   Values loaded: \n"+str(df))
+        elif(self.souce == "ib"):
+            self.log.logger.debug("   Loading intraday from IB")
+            # implement class for ib retreival
+            df = pd.DataFrame()
+        else:
+            self.log.logger.error("   DataFetcher source error:"+self.source)
+            df = pd.DataFrame()
+        return df
+
+    def getExpirations(self):
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        if(self.source == "public"):
+            from rrlib.rrDFPublic import OptionDFPublic as odfp
+            df = odfp(self.symbol).getExpirations()
+            self.log.logger.debug("   Values loaded: \n"+str(df))
+        elif(self.souce == "ib"):
+            self.log.logger.debug("   Loading intraday from IB")
+            # implement class for ib retreival
+            df = pd.DataFrame()
+        else:
+            self.log.logger.error("   DataFetcher source error:"+self.source)
+            df = pd.DataFrame()
+        return df

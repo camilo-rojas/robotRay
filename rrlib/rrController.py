@@ -10,11 +10,11 @@ Initially attending Telegram service.   Future will connect server interaction
 """
 
 import threading
-import time
 import sys
 import os
-import datetime
 import configparser
+import datetime
+from rrlib.rrPutSellStrategy import rrPutSellStrategy
 
 
 class rrController():
@@ -27,14 +27,15 @@ class rrController():
         # starting backend services
         from rrlib.rrDb import rrDbManager
         self.db = rrDbManager()
+        self.rrPutSellStrategy = rrPutSellStrategy()
         # starting ini parameters
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
         self.log.logger.debug("Initialization finished robotRay controller")
+        # controller runtime variables
+        self.runCycle = 0
 
     def botcommand(self, command=""):
-        from rrlib.rrThinker import thinker
-        self.thinker = thinker()
         response = []
         command = command.lower()
         if (command == "intro" or command == "about"):
@@ -69,16 +70,16 @@ class rrController():
             response.append(self.db.printOptions())
         elif (command == "printopenp"):
             response.append("Open Prospect data")
-            response.append(self.thinker.printOpenProspects())
+            response.append(self.rrPutSellStrategy.printOpenProspects())
         elif (command == "printclosedp"):
             response.append("Closed Prospect data")
-            response.append(self.thinker.printClosedProspects())
+            response.append(self.rrPutSellStrategy.printClosedProspects())
         elif (command == "printallp"):
             response.append("All Prospect data sorted by PNL")
-            response.append(self.thinker.printAllProspects())
+            response.append(self.rrPutSellStrategy.printAllProspects())
         elif(command == "sendp"):
             response.append("Sent daily report of prospects")
-            self.thinker.sendDailyReport()
+            self.rrPutSellStrategy.sendDailyReport()
         elif(command == "status"):
             response.append("Status report RobotRay.")
             if (self.db.getSource() == "public"):
@@ -117,7 +118,7 @@ class rrController():
                 response.append(
                     "995. General Commands: help, clear, status, source, jobs, isdbinuse, quit, exit, intro, about")
                 response.append(
-                    "================================================================")
+                    "----------------------------------------------------------------")
                 response.append(
                     "995. The following are scheduled automatically, run only for override")
                 response.append(
@@ -125,16 +126,18 @@ class rrController():
                 response.append(
                     "995. Option Data refresh manual commands: getoptiondata, think")
                 response.append(
-                    "================================================================")
+                    "----------------------------------------------------------------")
                 response.append(
                     "995. Stock Data info commands: printstocks, printintra")
                 response.append("995. Option Data info commands: printoptions")
                 response.append(
                     "995. Run prospect info: printallp, printopenp, printclosedp, sendp")
                 response.append(
-                    "================================================================")
+                    "----------------------------------------------------------------")
                 response.append(
                     "995. Statistics for bot operations: report, reporty, reportytd, reportsm, reportw")
+                response.append(
+                    "================================================================")
             elif(command == "clear"):
                 response.append("")
                 if sys.platform == 'win32':
@@ -142,9 +145,7 @@ class rrController():
                 else:
                     os.system("clear")
             elif(command == "getoptiondata"):
-                response.append("self.getOptionData()")
-                response.append(
-                    "20. This will take a couple of minutes, please don't cancel")
+                self.getOptionData()
             elif(command == "isdbinuse"):
                 response.append("")
                 if(self.db.isDbInUse()):
@@ -173,29 +174,24 @@ class rrController():
                 response.append("print(self.db.printOptions())")
                 response.append("570. Options data:")
             elif (command == "printopenp"):
-                response.append("print(thinker().printOpenProspects())")
+                response.append("print(rrPutSellStrategy().printOpenProspects())")
                 response.append("130. Open Prospect data:")
             elif (command == "printclosedp"):
-                response.append("print(thinker().printClosedProspects())")
+                response.append("print(rrPutSellStrategy().printClosedProspects())")
                 response.append("130. Closed Prospect data:")
             elif (command == "printallp"):
-                response.append("print(thinker().printAllProspects())")
+                response.append("print(rrPutSellStrategy().printAllProspects())")
                 response.append("130. Prospect data:")
             elif(command == "sendp"):
-                response.append("thinker().sendDailyReport()")
-                response.append("140. Sending daily report of prospects")
+                self.rrPutSellStrategy.sendDailyReport()
             elif(command == "think"):
-                response.append("self.think()")
-                response.append("100. Launching thinker")
+                self.think()
             elif(command == "status"):
-                response.append("self.status()")
+                self.status()
             elif(command == "getstockdata"):
-                response.append("self.getStockData()")
-                response.append(
-                    "10. This will take a couple of minutes, please don't cancel")
+                self.getStockData()
             elif(command == "getintradaydata"):
-                response.append("self.getIntradayData()")
-                response.append("30. This will take a minute, please don't cancel")
+                self.getIntradayData()
             elif(command == "jobs"):
                 response.append("")
                 response.append("996. Currently running: " +
@@ -208,3 +204,89 @@ class rrController():
             return response
         except Exception as e:
             self.log.logger.error(e)
+
+    def status(self):
+        self.log.logger.info(self.db.getServerRun())
+
+    def ismarketopen(self):
+        import datetime
+        if (datetime.datetime.today().weekday() < 5) and ((datetime.datetime.now().time() > datetime.time(7, 30)) and
+                                                          (datetime.datetime.now().time() < datetime.time(20, 00))):
+            return True
+        else:
+            self.log.logger.info("998. - Market closed or not a working day")
+            return False
+
+    def getStockData(self):
+        self.log.logger.info("10. Getting stock data, daily process ")
+        # if self.ismarketopen():
+        if True:
+            try:
+                self.db.getStockData()
+                self.log.logger.info(
+                    "10. DONE - Stock data fetched")
+                self.db.updateServerRun(lastStockDataUpdate=datetime.datetime.now())
+            except Exception as e:
+                self.log.logger.error("10. Error fetching daily stock data")
+                self.log.logger.error(e)
+
+    def getOptionData(self):
+        self.log.logger.info("20. Getting Option Data")
+        if self.ismarketopen():
+            # if True:
+            try:
+                self.db.getOptionData()
+                self.log.logger.info(
+                    "20. DONE - Option data successfully fetched")
+                self.db.updateServerRun(lastOptionDataUpdate=datetime.datetime.now())
+            except Exception as e:
+                self.log.logger.error("20. Error fetching daily option data")
+                self.log.logger.error(e)
+
+    def getIntradayData(self):
+        self.log.logger.info("30. Getting Intraday Data")
+        self.runCycle = self.runCycle + 1
+        # if True:
+        if self.ismarketopen():
+            try:
+                self.db.getIntradayData()
+                self.log.logger.info(
+                    "30. DONE - Intraday data successfully fetched")
+                self.think()
+            except Exception as e:
+                self.log.logger.error("30. Error fetching Intraday data")
+                self.log.logger.error(e)
+
+    def think(self):
+        self.log.logger.info(
+            "100. Initiating R's catcher...")
+        if self.ismarketopen():
+            try:
+                self.log.logger.info(
+                    "     110. Evaluating daily drops and pricing opptys for elegible stocks")
+                self.rrPutSellStrategy.evaluateProspects()
+                self.log.logger.info(
+                    "     120. Updating pricing for existing prospects")
+                self.rrPutSellStrategy.updatePricingProspects()
+                self.log.logger.info(
+                    "     130. Communicating prospects")
+                self.rrPutSellStrategy.communicateProspects()
+                self.log.logger.info(
+                    "     140. Communicating closings")
+                self.rrPutSellStrategy.communicateClosing()
+                self.db.updateServerRun(lastThinkUpdate=datetime.datetime.now())
+                self.log.logger.info("100. DONE - Finished thinking")
+            except Exception as e:
+                self.log.logger.error("100. Error thinking")
+                self.log.logger.error(e)
+
+    def sendReport(self):
+        self.log.logger.info(
+            "200. Sending report to IFTTT")
+        if self.ismarketopen():
+            try:
+                self.rrPutSellStrategy.sendDailyReport()
+                self.log.logger.info("200. DONE - Finished sending report")
+            except Exception as e:
+                self.log.logger.error("200. Error sending report")
+                self.log.logger.error(e)

@@ -19,6 +19,7 @@ import urllib
 from urllib.error import URLError, HTTPError
 import pandas as pd
 from finvizfinance.quote import finvizfinance
+import yfinance as yf
 
 
 class StockDFPublic():
@@ -76,7 +77,17 @@ class OptionDFPublic():
         config.read("rrlib/robotRay.ini")
         self.timeout = int(config['urlfetcher']['Timeout'])
 
+    def getExpirations(self):
+        stock = yf.Ticker(self.symbol)
+        return stock.options
+
+    def getStrikes(self):
+        stock = yf.Ticker(self.symbol)
+        opt = stock.option_chain(stock.options[6])
+        return opt.puts.strike
+
     # Strike int, month is int and the number of months after today
+
     def getData(self, month, strike):
         # https://finance.yahoo.com/quote/WDAY200117P00160000
         # Get the put value for specified month 3-8
