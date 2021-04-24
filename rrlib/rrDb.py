@@ -60,6 +60,42 @@ class rrDbManager:
         OptionData.create_table()
         IntradayStockData.create_table()
         ProspectData.create_table()
+        ServerRun.create_table()
+
+    def startServerRun(self):
+        sr = ServerRun(startup=datetime.datetime.now())
+        sr.save()
+
+    def updateServerRun(self, lastStockDataUpdate="", lastOptionDataUpdate="",
+                        lastThinkUpdate="", telegramBotEnabled="", runCycles="", prospectsFound="", pnl=""):
+        sr = ServerRun.select().order_by(ServerRun.id.desc()).get()
+        if telegramBotEnabled != "":
+            sr.telegramBotEnabled = "Yes"
+        if lastStockDataUpdate != "":
+            sr.lastStockDataUpdate = lastStockDataUpdate
+        if lastOptionDataUpdate != "":
+            sr.lastOptionDataUpdate = lastOptionDataUpdate
+        if lastThinkUpdate != "":
+            sr.lastThinkUpdate = lastThinkUpdate
+            if sr.runCycles == "":
+                sr.runCycles = "1"
+            else:
+                sr.runCycles = str(int(sr.runCycles)+1)
+        if prospectsFound != "":
+            if sr.prospectsFound == "":
+                sr.prospectsFound = "1"
+            else:
+                sr.prospectsFound = str(int(sr.prospectsFound)+1)
+        if pnl != "":
+            if sr.pnl == "":
+                sr.pnl = pnl
+            else:
+                sr.pnl = str(float(sr.pnl)+pnl)
+        sr.save()
+
+    def getServerRun(self):
+        sr = pd.DataFrame(ServerRun.select().order_by(ServerRun.id.desc()).dicts())
+        return sr.head(1)
 
     def isDbInUse(self):
         try:
@@ -104,6 +140,7 @@ class rrDbManager:
         #    self.log.logger.warning(" DB already opened ")
         #    return False
         from rrlib.rrDataFetcher import StockDataFetcher as stckFetcher
+        from rrlib.rrDataFetcher import OptionDataFetcher as optFetcher
         from random import randint
         self.log.logger.debug("  DB Manager Get Stock data.  ")
         StockData.create_table()
@@ -136,7 +173,11 @@ class rrDbManager:
                         strike = round(strike, -1)
                     elif strike > 1000:
                         strike = round(strike, -2)
-                    # print(strike)
+
+                    strikes = optFetcher(stock.ticker).getStrikes()
+                    if strike not in strikes.values:
+                        strike = min(strikes.values, key=lambda x: abs(x-strike))
+
                     row = {'stock': stock.ticker, 'strike': str(strike), 'timestamp': str(datetime.datetime.now()),
                            'price': dataFetcher.iloc[68]['value'], 'prevClose': dataFetcher.iloc[62]['value'],
                            'salesqq': dataFetcher.iloc[53]['value'], 'sales5y': dataFetcher.iloc[47]['value'],
@@ -612,3 +653,18 @@ class ProspectData(pw.Model):
         database = db
         db_table = "prospectData"
         primary_key = pw.CompositeKey("stock", "strike", "expireDate")
+
+
+class ServerRun(pw.Model):
+    startup = pw.DateTimeField()
+    lastThinkUpdate = pw.DateTimeField(null=True)
+    lastStockDataUpdate = pw.DateTimeField(null=True)
+    lastOptionDataUpdate = pw.DateTimeField(null=True)
+    runCycles = pw.CharField(default="")
+    telegramBotEnabled = pw.CharField(null=True)
+    prospectsFound = pw.CharField(default="")
+    pnl = pw.CharField(default="")
+
+    class Meta:
+        database = db
+        db_table = "serverRun"

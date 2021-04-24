@@ -31,6 +31,8 @@ class rrController():
         # starting ini parameters
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
+        # run outside trading hours
+        self.oth = config.get("debug", "oth")
         self.log.logger.debug("Initialization finished robotRay controller")
         # controller runtime variables
         self.runCycle = 0
@@ -219,8 +221,7 @@ class rrController():
 
     def getStockData(self):
         self.log.logger.info("10. Getting stock data, daily process ")
-        # if self.ismarketopen():
-        if True:
+        if self.ismarketopen() or self.oth == "Yes":
             try:
                 self.db.getStockData()
                 self.log.logger.info(
@@ -232,8 +233,7 @@ class rrController():
 
     def getOptionData(self):
         self.log.logger.info("20. Getting Option Data")
-        if self.ismarketopen():
-            # if True:
+        if self.ismarketopen() or self.oth == "Yes":
             try:
                 self.db.getOptionData()
                 self.log.logger.info(
@@ -246,8 +246,7 @@ class rrController():
     def getIntradayData(self):
         self.log.logger.info("30. Getting Intraday Data")
         self.runCycle = self.runCycle + 1
-        # if True:
-        if self.ismarketopen():
+        if self.ismarketopen() or self.oth == "Yes":
             try:
                 self.db.getIntradayData()
                 self.log.logger.info(
@@ -260,7 +259,7 @@ class rrController():
     def think(self):
         self.log.logger.info(
             "100. Initiating R's catcher...")
-        if self.ismarketopen():
+        if self.ismarketopen() or self.oth == "Yes":
             try:
                 self.log.logger.info(
                     "     110. Evaluating daily drops and pricing opptys for elegible stocks")
@@ -283,7 +282,7 @@ class rrController():
     def sendReport(self):
         self.log.logger.info(
             "200. Sending report to IFTTT")
-        if self.ismarketopen():
+        if self.ismarketopen() or self.oth == "Yes":
             try:
                 self.rrPutSellStrategy.sendDailyReport()
                 self.log.logger.info("200. DONE - Finished sending report")
