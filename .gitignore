@@ -2,7 +2,7 @@ env.sh
 config.py
 rrlib/__pycache__/
 rrlib/robotRay.ini
-rrDb.db
+*.db
 .DS_Store
 # Byte-compiled / optimized / DLL files
 __pycache__/

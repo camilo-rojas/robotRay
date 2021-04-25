@@ -16,6 +16,7 @@ import configparser
 import datetime
 from rrlib.rrPutSellStrategy import rrPutSellStrategy
 from rrlib.rrGolgenStrategy import rrGoldenStrategy
+from rrlib.rrBacktrader import rrBacktrader
 
 
 class rrController():
@@ -28,6 +29,7 @@ class rrController():
         # starting backend services
         from rrlib.rrDb import rrDbManager
         self.db = rrDbManager()
+        self.bt = rrBacktrader()
         self.rrPutSellStrategy = rrPutSellStrategy()
         self.rrGoldenStrategy = rrGoldenStrategy()
         # starting ini parameters
@@ -128,7 +130,7 @@ class rrController():
                 response.append(
                     "995. Stock Data refresh manual commands: getstockdata, getintradaydata")
                 response.append(
-                    "995. Option Data refresh manual commands: getoptiondata, sellputs")
+                    "995. Option Data refresh manual commands: getoptiondata")
                 response.append(
                     "----------------------------------------------------------------")
                 response.append(
@@ -136,6 +138,10 @@ class rrController():
                 response.append("995. Option Data info commands: printoptions")
                 response.append(
                     "995. Run prospect info: printallp, printopenp, printclosedp, sendp")
+                response.append(
+                    "----------------------------------------------------------------")
+                response.append("995. Strategies: sellputs, golden")
+                response.append("995. Backtrader: btdownload, btsellputs, btgolden")
                 response.append(
                     "----------------------------------------------------------------")
                 response.append(
@@ -202,6 +208,12 @@ class rrController():
                 self.goldenstrategy()
             elif(command == "sellputs"):
                 self.sellputsstrategy()
+            elif(command == "btdownload"):
+                self.btdownloader()
+            elif(command == "btgolden"):
+                self.btgolden()
+            elif(command == "btsellputs"):
+                self.btsellputs()
             elif(command == ""):
                 pass
             else:
@@ -212,7 +224,10 @@ class rrController():
             self.log.logger.error(e)
 
     def status(self):
-        self.log.logger.info(self.db.getServerRun())
+        f = '{:>30}|{:<120}'  # format
+        status = self.db.getServerRun()
+        for x in range(len(status.columns)):
+            self.log.logger.info(f.format(status.columns[x], str(status.iloc[0, x])))
 
     def ismarketopen(self):
         import datetime
@@ -259,6 +274,39 @@ class rrController():
                 self.sellputsstrategy()
             except Exception as e:
                 self.log.logger.error("30. Error fetching Intraday data")
+                self.log.logger.error(e)
+
+    def btdownloader(self):
+        self.log.logger.info("80. Backtrader downloading data")
+        if self.ismarketopen() or self.oth == "Yes":
+            try:
+                self.bt.downloadStockData()
+                self.log.logger.info(
+                    "80. DONE - Backtrader successfully fetched")
+            except Exception as e:
+                self.log.logger.error("80. Error fetching backtrader data")
+                self.log.logger.error(e)
+
+    def btgolden(self):
+        self.log.logger.info("81. Backtrader golden strategy")
+        if self.ismarketopen() or self.oth == "Yes":
+            try:
+                self.bt.btGolden()
+                self.log.logger.info(
+                    "81. DONE - Backtrader golden strategy")
+            except Exception as e:
+                self.log.logger.error("81. Error backtrading golden strategy")
+                self.log.logger.error(e)
+
+    def btsellputs(self):
+        self.log.logger.info("82. Backtrader sell puts strategy")
+        if self.ismarketopen() or self.oth == "Yes":
+            try:
+                self.bt.btGolden()
+                self.log.logger.info(
+                    "82. DONE - Backtrader sell puts strategy")
+            except Exception as e:
+                self.log.logger.error("82. Error backtrading sell puts strategy")
                 self.log.logger.error(e)
 
     def goldenstrategy(self):
