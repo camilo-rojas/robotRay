@@ -59,6 +59,7 @@ class rrBacktrader:
 
     def downloadStockData(self):
         stocks = self.db.getStocks()
+        SQLITE_MAX_VARIABLE_NUMBER = self.max_sql_variables()
         for index, stock in tqdm(stocks.iterrows(), desc="  Getting Historic Data", unit="Stock", ascii=False, ncols=120, leave=False):
             try:
                 historicData.drop_table(True)
@@ -69,11 +70,42 @@ class rrBacktrader:
                 df['date'] = df.index
                 df.rename(columns={'stock': 'stock', 'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close',
                                    'Volume': 'volume', 'Dividends': 'dividends', 'Stock Splits': 'stocksplits', 'Date': 'date'}, inplace=True)
-                historicData.insert_many(df.to_dict(orient='records')).execute()
+                print(str(SQLITE_MAX_VARIABLE_NUMBER))
+                size = (SQLITE_MAX_VARIABLE_NUMBER // len(df)) - 1
+                print(str(size))
+                # remove one to avoid issue if peewee adds some variable
+                for i in range(0, len(df), size):
+                    print(str(i))
+                    historicData.insert_many(df.to_dict(orient='records')[
+                                             i:i+size]).execute()
 
             except Exception as e:
                 self.log.logger.warning("Problem downloading data")
                 self.log.logger.warning(e)
+
+    def max_sql_variables(self):
+        import sqlite3
+        db = sqlite3.connect(':memory:')
+        cur = db.cursor()
+        cur.execute('CREATE TABLE t (test)')
+        low, high = 0, 100000
+        while (high - 1) > low:
+            guess = (high + low) // 2
+            query = 'INSERT INTO t VALUES ' + ','.join(['(?)' for _ in
+                                                        range(guess)])
+            args = [str(i) for i in range(guess)]
+            try:
+                cur.execute(query, args)
+            except sqlite3.OperationalError as e:
+                if "too many SQL variables" in str(e):
+                    high = guess
+                else:
+                    raise
+            else:
+                low = guess
+        cur.close()
+        db.close()
+        return low
 
 
 class historicData(pw.Model):
