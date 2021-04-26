@@ -15,7 +15,7 @@ import os
 import configparser
 import datetime
 from rrlib.rrPutSellStrategy import rrPutSellStrategy
-from rrlib.rrGolgenStrategy import rrGoldenStrategy
+from rrlib.rrGoldenStrategy import rrGoldenStrategy
 from rrlib.rrBacktrader import rrBacktrader
 
 
@@ -224,7 +224,7 @@ class rrController():
             self.log.logger.error(e)
 
     def status(self):
-        f = '{:>30}|{:<120}'  # format
+        f = '{:>30}|{:<70}'  # format
         status = self.db.getServerRun()
         for x in range(len(status.columns)):
             self.log.logger.info(f.format(status.columns[x], str(status.iloc[0, x])))

@@ -263,9 +263,9 @@ class rrDbManager:
                     if (self.verbose == "Yes"):
                         tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
                                    + " - rrLog - " +
-                                   "INFO -     DONE - Stock intraday data retreived for "+stock.ticker +
-                                   ", price:$"+str(dataFetcher.iloc[0]['price'])+", % price change:" + str(pctChange) +
-                                   "%, % volume change:"+str(dataFetcher.iloc[0]['%Volume']) +
+                                   "INFO -     DONE - Stock intraday "+stock.ticker +
+                                   ", price:$"+str(dataFetcher.iloc[0]['price'])+", % price chng:" + str(pctChange) +
+                                   "%, % volume chng:"+str(dataFetcher.iloc[0]['%Volume']) +
                                    "%, kpi:"+str(kpi))
                     self.log.logger.debug(
                         "  DB Manager intraday data retreived for "+stock.ticker)
