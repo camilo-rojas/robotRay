@@ -10,6 +10,10 @@ Backtrader strategy classes
 Process for module
 1. Gather data from yfinance the data for the stocks
 
+Pending
+2. Gather data from options (?)
+3. Call the strategy backtrader
+
 """
 
 import yfinance as yf
@@ -55,7 +59,24 @@ class rrBacktrader:
         pass
 
     def btGolden(self):
-        pass
+        from rrlib.rrGoldenBt import rrGoldenBt
+        stocks = self.db.getStocks()
+        # for index, stock in tqdm(stocks.iterrows(), desc="  Getting Historic Data", unit="Stock", ascii=False, ncols=120, leave=False):
+        for index, stock in stocks.iterrows():
+            try:
+                rrGoldenBt(stock['ticker']).run()
+            except Exception as e:
+                self.log.logger.warning("Problem backtrading Golden strategy.")
+                self.log.logger.warning(e)
+
+    def getHistoricData(self, stock):
+        df = pd.DataFrame(historicData.select().where(historicData.stock == stock).dicts())
+        df.drop('timestamp', inplace=True, axis=1)
+        df.drop('id', inplace=True, axis=1)
+        df.drop('stock', inplace=True, axis=1)
+        df['date'] = pd.to_datetime(df['date'])
+        df.set_index('date', drop=True, inplace=True)
+        return df
 
     def downloadStockData(self):
         stocks = self.db.getStocks()

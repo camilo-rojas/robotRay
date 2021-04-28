@@ -21,7 +21,6 @@ class rrPortfolio:
         from rrlib.rrLogger import logger, TqdmToLogger
         from rrlib.rrDb import rrDbManager
         # Get logging service
-        self.db = rrDbManager()
         self.log = logger()
         self.tqdm_out = TqdmToLogger(self.log.logger)
         self.log.logger.debug("  Backtrader starting.  ")
@@ -30,10 +29,9 @@ class rrPortfolio:
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
         # db filename to confirm it exists
-        self.dbFilename = config.get('backtrader', 'filename')
-        self.timeframe = config.get('backtrader', 'timeframe')
-        self.initializeDb()
+        self.funds = config.get('portfolio', 'funds')
+        self.R = config.get('portfolio', 'R')
+        self.monthlyPremium = config.get('portfolio', 'monthlyPremium')
+        self.BP = config.get('portfolio', 'BP')
         # Get datsource from pubic or ib
         self.source = config.get('datasource', 'source')
-        # Get verbose option boolean
-        self.verbose = config.get('datasource', 'verbose')

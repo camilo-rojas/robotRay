@@ -41,6 +41,9 @@ class rrPutSellStrategy:
         # starting backend services
         from rrlib.rrDb import rrDbManager
         self.db = rrDbManager()
+        # portfolio startup
+        from rrlib.rrPortfolio import rrPortfolio
+        self.portfolio = rrPortfolio()
         # starting ini parameters
         import configparser
         config = configparser.ConfigParser()
@@ -49,7 +52,7 @@ class rrPutSellStrategy:
         self.dayPriceChgGreen = config.get('thinker', 'dayPriceChgGreen')
         self.dayPriceChgRed = config['thinker']['dayPriceChgRed']
         # expected minimum monthly premium for holding the option 1%
-        self.monthlyPremium = config['thinker']['monthlyPremium']
+        self.monthlyPremium = self.portfolio.monthlyPremium
         # sma200 below 0 is red, <0.1 yellow, > 0.1 green
         self.smaGreen = config['thinker']['smaGreen']
         self.smaRed = config['thinker']['smaRed']
@@ -57,7 +60,7 @@ class rrPutSellStrategy:
         self.salesGrowthGreen = config['thinker']['salesGrowthGreen']
         self.salesGrowthRed = config['thinker']['salesGrowthRed']
         # retreive R
-        self.R = config['thinker']['R']
+        self.R = self.portfolio.R
         # Intraday kpi green and red
         self.IntradayKPIGreen = config['thinker']['IntradayKPIGreen']
         self.IntradayKPIRed = config['thinker']['IntradayKPIRed']

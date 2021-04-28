@@ -1,4 +1,4 @@
-sqlite3
+backtrader
 bs4
 pandas
 peewee
@@ -11,4 +11,5 @@ python-telegram-bot
 keyring
 ib_insync
 yfinance
+matplotlib
 logging

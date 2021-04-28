@@ -35,10 +35,13 @@ class rrDbManager:
     def __init__(self):
         # Starting common services
         from rrlib.rrLogger import logger, TqdmToLogger
+        from rrlib.rrPortfolio import rrPortfolio
         # Get logging service
         self.log = logger()
         self.tqdm_out = TqdmToLogger(self.log.logger)
         self.log.logger.debug("  DB Manager starting.  ")
+        # start portfolio
+        self.portfolio = rrPortfolio()
         # starting ini parameters
         import configparser
         config = configparser.ConfigParser()
@@ -279,7 +282,6 @@ class rrDbManager:
                 "or yahoo.com for availability.  Using cached verssion.")
             self.log.logger.error(e)
             return False
-        # db.close()
         return True
 
     def initializeExpirationDate(self):
@@ -311,7 +313,6 @@ class rrDbManager:
             ExpirationDate.insert(
                 {'date': third_friday(2, 4, month, year)}).execute()
             x = x+1
-        # db.close()
 
     def completeExpirationDate(self, monthYear):
         completeDate = ""
@@ -325,26 +326,38 @@ class rrDbManager:
                 "    Error completing expiration date "+monthYear)
             self.log.logger.error(e)
             return False
-        # db.close()
         return completeDate
 
     def getOptionData(self):
-        # try:
-        #    db.connect()
-        # except Exception:
-        #    self.log.logger.warning(" DB already opened ")
-        #    return False
         from rrlib.rrDataFetcher import OptionDataFetcher as optFetcher
         from random import randint
+        import calendar
+        # startup
         self.log.logger.info("  DB Manager Get Option data.  ")
-        month = 3
-        strike = 150
+        # create table if not created
         OptionData.create_table()
+        # R value from portfolio
+        R = float(self.portfolio.R)
+        # minpremium from portfolio
+        monthlyPremium = float(self.portfolio.monthlyPremium)
+        # BP from portfolio
+        BP = float(self.portfolio.BP)
+
         try:
             for stock in tqdm(Stock.select(), desc="Getting Option Data", unit="Stock", ascii=False, ncols=120, leave=False):
+                # for stock in Stock.select().where(Stock.ticker == "COIN"):
                 month = 3
                 time.sleep(randint(2, 5))
-                self.log.logger.debug(stock.ticker)
+                self.log.logger.debug(stock.ticker+" "+str(month))
+                # Get stock data for Option analysis
+                stkdata = StockData.select().where(
+                    StockData.stock == stock.ticker).order_by(StockData.id.desc()).get()
+                strike = int(stkdata.strike)
+                stockPrice = float(stkdata.price)
+                if(stkdata.earnDate == "-"):
+                    EdateMonth = "NA"
+                else:
+                    EdateMonth = list(calendar.month_abbr).index(stkdata.earnDate[:3])
                 mbar = tqdm(total=6, desc="Getting Month Data: ",
                             unit="Month", ascii=False, ncols=120, leave=False)
                 if(self.verbose == "Yes"):
@@ -353,11 +366,6 @@ class rrDbManager:
                 while month < 9:
                     try:
                         # get strike info from stock data
-                        self.log.logger.debug(str(month))
-                        strike = int(StockData.select(StockData.strike).where(
-                            StockData.stock == stock.ticker).order_by(StockData.id.desc()).get().strike)
-                        stockPrice = float(StockData.select(StockData.price).where(
-                            StockData.stock == stock.ticker).order_by(StockData.id.desc()).get().price)
                         self.log.logger.debug("  DB Manager Attempting to retreive data for option " +
                                               stock.ticker+" month "+str(month)+" at strike:"+str(strike))
                         dataFetcher = optFetcher(stock.ticker).getData(month, strike)
@@ -367,17 +375,15 @@ class rrDbManager:
                                 "  DB Manager Data retreived for option "+stock.ticker+" month "+str(month))
                             # calculate option data pricing and kpi's
                             # rpotential
-                            import configparser
-                            import calendar
-                            config = configparser.ConfigParser()
-                            config.read("rrlib/robotRay.ini")
-                            R = int(config['thinker']['R'])
                             # calculate number of contracts, use price if its within bid-ask otherwise use midpoint
                             price = float(dataFetcher.iloc[10]['value'])
-                            if price < float(dataFetcher.iloc[2]['value']) or price > float(dataFetcher.iloc[3]['value']):
-                                price = (float(dataFetcher.iloc[2]['value']) +
-                                         float(dataFetcher.iloc[3]['value']))/2
+                            bid = float(dataFetcher.iloc[2]['value'])
+                            ask = float(dataFetcher.iloc[3]['value'])
+                            # set price mid ask bid if price below bid or price above ask and bid ask above 0
+                            if (bid > 0 and ask > 0) and (price < bid or price > ask):
+                                price = (bid + ask)/2
                             if price > 0:
+                                # with R = 100 then price must be > $6.6, R200=$13.3, R300=20
                                 contracts = round(2*R/(50*price))
                             else:
                                 contracts = 0
@@ -389,14 +395,8 @@ class rrDbManager:
                             # calculate R potential from selling
                             Rpotential = 100*contracts*price/R/2
                             # calculate expected premium
-                            # minpremium import
-                            monthlyPremium = float(
-                                config['thinker']['monthlyPremium'])
                             expectedPremium = stockPrice*month*monthlyPremium
                             # kpi checks for month of earnings, number of contracts, r potential, reduce for buying power
-                            BP = int(config['thinker']['BP'])
-                            EdateMonth = list(calendar.month_abbr).index(StockData.select(StockData.earnDate).where(
-                                StockData.stock == stock.ticker).order_by(StockData.id.desc()).get().earnDate[:3])
                             kpi = 0.5 if price > expectedPremium else 0  # pricing premium
                             if contracts < 10:  # contract numbers
                                 kpi = kpi+0.1
@@ -405,12 +405,13 @@ class rrDbManager:
                             kpi = kpi+Rpotential*0.05  # r potential
                             # reduce kpi based on stock ownership vs buying power
                             kpi = kpi-0.1*(stockOwnership/BP)
-                            if EdateMonth % 3 == (datetime.datetime.now().month+month) % 3:
-                                kpi = 0
+                            if (EdateMonth != "NA"):
+                                if (EdateMonth % 3 == (datetime.datetime.now().month+month) % 3):
+                                    kpi = 0
                             row = {'stock': stock.ticker, 'strike': str(strike), 'price': round(price, 3),
                                    'expireDate': datetime.datetime.strptime(dataFetcher.iloc[5]['value'], '%Y-%m-%d'),
                                    'openPrice': dataFetcher.iloc[1]['value'],
-                                   "bid": dataFetcher.iloc[2]['value'], "ask": dataFetcher.iloc[3]['value'],
+                                   "bid": str(bid), "ask": str(ask),
                                    "dayRange": dataFetcher.iloc[6]['value'], "volume": dataFetcher.iloc[8]['value'],
                                    "openInterest": dataFetcher.iloc[9]['value'], 'timestamp': datetime.datetime.now(),
                                    'contracts': str(contracts), 'stockOwnership': str(round(stockOwnership, 3)),
@@ -466,18 +467,10 @@ class rrDbManager:
             self.log.logger.error(
                 "  DB Manager Error failed to fetch data.  Please check internet connectivity or yahoo.com for availability.  Using cached verssion.")
             return False
-
-        # self.log.logger.info("  closing db.  ")
-        # db.close()
         return True
 
     def saveProspect(self, stock, strike, expireDate, price, contracts, stockOwnership,
                      rPotential, kpi, color):
-        # try:
-        #    db.connect()
-        # except Exception:
-        #    self.log.logger.error(" DB already opened ")
-        #    return False
         try:
             ProspectData.create_table()
             today = datetime.datetime.today()

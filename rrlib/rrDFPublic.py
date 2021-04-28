@@ -121,11 +121,20 @@ class OptionDFPublic():
                     df = df.append(
                         {'key': tableData.span.text}, ignore_index=True)
                     try:
-                        df.at[i, 'value'] = data[i].span.text
+                        if data[i].span.text != "N/A":
+                            df.at[i, 'value'] = data[i].span.text
+                        else:
+                            df.at[i, 'value'] = '0'
                     except Exception:
-                        df.at[i, 'value'] = data[i].text
+                        if data[i].text != "N/A":
+                            df.at[i, 'value'] = data[i].text
+                        else:
+                            df.at[i, 'value'] = '0'
                     else:
-                        df.at[i, 'value'] = data[i].text
+                        if data[i].text != "N/A":
+                            df.at[i, 'value'] = data[i].text
+                        else:
+                            df.at[i, 'value'] = '0'
                     i = i+1
                 if len(df) > 0:
                     price = soup.find(
