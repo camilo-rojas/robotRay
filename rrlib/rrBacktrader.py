@@ -91,11 +91,19 @@ class rrBacktrader:
                 df['date'] = df.index
                 df.rename(columns={'stock': 'stock', 'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close',
                                    'Volume': 'volume', 'Dividends': 'dividends', 'Stock Splits': 'stocksplits', 'Date': 'date'}, inplace=True)
-                size = (SQLITE_MAX_VARIABLE_NUMBER // len(df)) - 1
-                # remove one to avoid issue if peewee adds some variable
-                for i in range(0, len(df), size):
-                    historicData.insert_many(df.to_dict(orient='records')[
-                                             i:i+size]).execute()
+                page = int((len(df)*len(df.columns)*1.5))
+                size = int(page // SQLITE_MAX_VARIABLE_NUMBER)
+                if size > 0:
+                    increment = int(len(df)//size)
+                else:
+                    increment = -1
+                if size > 0:
+                    for i in range(0, len(df), increment):
+                        # print("i:"+str(i)+", i+increment"+str(i+increment))
+                        historicData.insert_many(df.to_dict(orient='records')[
+                            i:i+increment]).execute()
+                else:
+                    historicData.insert_many(df.to_dict(orient='records')).execute()
 
             except Exception as e:
                 self.log.logger.warning("Problem downloading data")

@@ -9,11 +9,11 @@ Backtrader for Golden cross and Death cross Strategy
 
 
 """
-
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 import backtrader as bt
-import matplotlib
 import datetime
-import threading
+import math
 
 
 class rrGoldenBt:
@@ -39,6 +39,7 @@ class rrGoldenBt:
         # max investment in % terms of porfolio
         self.maxinv = config.get('backtrader', 'maxinv')
         self.timeframe = config.get('backtrader', 'timeframe')
+        self.commission = float(config.get('backtrader', 'commission'))
         # Generate Cerebro
         self.cerebro = bt.Cerebro()
         self.cerebro.broker.setcash(float(self.portfolio.funds))
@@ -53,6 +54,10 @@ class rrGoldenBt:
         self.cerebro.addstrategy(GoldenStrategy)
         # start balance for performance testing
         initialbalance = self.cerebro.broker.getvalue()
+        # set commision statement
+        self.cerebro.broker.setcommission(self.commission)
+        # Add a FixedSize sizer according to the stake
+        self.cerebro.addsizer(bt.sizers.FixedSize, stake=10)
         # try to run the cerebro strategies
         try:
             self.cerebro.run()
@@ -70,6 +75,12 @@ class rrGoldenBt:
 
 
 class GoldenStrategy(bt.Strategy):
+    params = (
+        ('exitbars', 5),
+        ('smashort', 50),
+        ('smalong', 200),
+        ('maxinv', 3)
+    )
 
     def __init__(self):
         # start logger service
@@ -79,6 +90,18 @@ class GoldenStrategy(bt.Strategy):
         self.dataclose = self.datas[0].close
         # To keep track of pending orders
         self.order = None
+        self.buyprice = None
+        self.buycomm = None
+        # Add a MovingAverageSimple indicator
+        self.sma1 = bt.indicators.SimpleMovingAverage(
+            self.datas[0], period=self.params.smashort)
+        self.sma2 = bt.indicators.SimpleMovingAverage(
+            self.datas[0], period=self.params.smalong)
+        bt.indicators.MACDHisto(self.datas[0])
+        rsi = bt.indicators.RSI(self.datas[0])
+        bt.indicators.SmoothedMovingAverage(rsi, period=10)
+        bt.indicators.ATR(self.datas[0], plot=False)
+        self.crossover = bt.indicators.CrossOver(self.sma1, self.sma2)
 
     def notify_order(self, order):
         if order.status in [order.Submitted, order.Accepted]:
@@ -90,6 +113,8 @@ class GoldenStrategy(bt.Strategy):
         if order.status in [order.Completed]:
             if order.isbuy():
                 self.log.logger.debug('BUY EXECUTED, %.2f' % order.executed.price)
+                self.buyprice = order.executed.price
+                self.buycomm = order.executed.comm
             elif order.issell():
                 self.log.logger.debug('SELL EXECUTED, %.2f' % order.executed.price)
 
@@ -101,25 +126,29 @@ class GoldenStrategy(bt.Strategy):
         # Write down: no pending order
         self.order = None
 
+    def notify_trade(self, trade):
+        if not trade.isclosed:
+            return
+
+        self.log.logger.debug('OPERATION PROFIT, GROSS '+str(trade.pnl) +
+                              ', NET ' + str(trade.pnlcomm))
+
     def next(self):
         # Check if an order is pending ... if yes, we cannot send a 2nd one
         if self.order:
             return
         # Check if we are in the market
         if not self.position:
-            # Not yet ... we MIGHT BUY if ...
-            if self.dataclose[0] < self.dataclose[-1]:
-                # current close less than previous close
-                if self.dataclose[-1] < self.dataclose[-2]:
-                    # previous close less than the previous close
-                    # BUY, BUY, BUY!!! (with default parameters)
-                    self.log.logger.debug('BUY CREATE, %.2f' % self.dataclose[0])
-                    # Keep track of the created order to avoid a 2nd order
-                    self.order = self.buy()
+            if self.crossover > 0:
+                self.size = math.floor((float(self.params.maxinv)*float(self.broker.cash)) /
+                                       (self.data.close*100))
+                self.log.logger.debug('BUY CREATE, %.2f' % self.dataclose[0])
+                # Keep track of the created order to avoid a 2nd order
+                self.order = self.buy(size=self.size)
         else:
             # Already in the market ... we might sell
-            if len(self) >= (self.bar_executed + 5):
+            if self.crossover < 0:
                 # SELL, SELL, SELL!!! (with all possible default parameters)
                 self.log.logger.debug('SELL CREATE, %.2f' % self.dataclose[0])
                 # Keep track of the created order to avoid a 2nd order
-                self.order = self.sell()
+                self.order = self.close()
