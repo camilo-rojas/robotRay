@@ -13,6 +13,7 @@ Process for module
 3. class lifecycle methods
 
 """
+import pandas as pd
 
 
 class rrPortfolio:
@@ -35,3 +36,33 @@ class rrPortfolio:
         self.BP = config.get('portfolio', 'BP')
         # Get datsource from pubic or ib
         self.source = config.get('datasource', 'source')
+
+    def switchSource(self, source):
+        if source == "ib":
+            self.source = "ib"
+            self.log.logger.info(
+                "  Portfolio switching from Public to Interactive Brokers")
+        elif source == "public":
+            self.source = "public"
+            self.log.logger.info(
+                "  Portfolio switching from Interactive Brokers to Public")
+        else:
+            self.source = "public"
+            self.log.warning(
+                "  Portfolio switching allows ib for Interactive Brokers or Public for finviz / yahoo, public by default")
+
+    def getPositions(self):
+        if self.source == "ib":
+            from rrlib.rrDFIB import IBConnection
+            self.ib = IBConnection()
+            self.log.logger.info("    About to retreive Portfolio")
+            if not self.ib.isConnected():
+                self.ib.connect()
+            pos = self.ib.getPositions()
+            df = pd.DataFrame(pos)
+            df['symbol'] = ""
+            for i in range(len(df)):
+                df['symbol'][i] = pos[i][1].symbol
+            print(df)
+            df = pd.DataFrame(pos)
+            return df
