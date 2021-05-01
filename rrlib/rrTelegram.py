@@ -61,7 +61,11 @@ class rrTelegram:
 
     # function to handle errors occured in the dispatcher
     def error(self, update, context):
-        update.message.reply_text('RobotRay error occured.')
+        try:
+            update.message.reply_text('RobotRay error occured.')
+        except Exception:
+            self.log.logger.error(
+                "   Robotray error ocurred, you have two instances running Telegram bot")
 
     # function to handle normal text
     def textCommand(self, update, context):

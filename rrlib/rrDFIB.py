@@ -109,12 +109,12 @@ class StockDFIB():
         dfBar = util.df(bars)
         self.ib.ib.sleep(1)
         pchg = round(((float(data.marketPrice()) -
-                     float(dfBar[:-1].close))/float(dfBar[:-1].close)*100), 2)
+                       float(dfBar[:-1].close))/float(dfBar[:-1].close)*100), 2)
         volchg = round(data.volume/float(dfBar[:-1].volume), 2)
         df = pd.DataFrame(columns=['stock', 'price', '%Change', '%Volume'])
         df = df.append({'stock': self.symbol, 'price': str(data.marketPrice()),
                         '%Change': str(pchg),
-                       '%Volume': str(volchg)
+                        '%Volume': str(volchg)
                         }, ignore_index=True)
         self.log.logger.info("   Values loaded: \n"+str(df))
         self.log.logger.info(
@@ -185,6 +185,12 @@ class IBConnection(metaclass=Singleton):
         if contract:
             symbol = contract.localSymbol
             msg += " "+symbol
+        if errorCode == 200 and errorString == 'No security definition has been found for the request':
+            msg += " - Bad contract"
+        elif errorCode == 1102:
+            msg += " - Restarting after outage"
+            self.connect()
+
         self.log.logger.info(" IB message:"+msg)
 
     def connect(self):

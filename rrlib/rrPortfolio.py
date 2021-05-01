@@ -20,7 +20,6 @@ class rrPortfolio:
     def __init__(self):
         # Starting common services
         from rrlib.rrLogger import logger, TqdmToLogger
-        from rrlib.rrDb import rrDbManager
         # Get logging service
         self.log = logger()
         self.tqdm_out = TqdmToLogger(self.log.logger)
@@ -52,6 +51,7 @@ class rrPortfolio:
                 "  Portfolio switching allows ib for Interactive Brokers or Public for finviz / yahoo, public by default")
 
     def getPositions(self):
+        df = pd.DataFrame()
         if self.source == "ib":
             from rrlib.rrDFIB import IBConnection
             self.ib = IBConnection()
@@ -61,8 +61,31 @@ class rrPortfolio:
             pos = self.ib.getPositions()
             df = pd.DataFrame(pos)
             df['symbol'] = ""
+            pd.options.mode.chained_assignment = None  # default='warn'
             for i in range(len(df)):
                 df['symbol'][i] = pos[i][1].symbol
-            print(df)
-            df = pd.DataFrame(pos)
+            df.drop('contract', inplace=True, axis=1)
+        else:
+            # get Db positions
+            pass
+        return df
+
+    def getAccount(self):
+        if self.source == "ib":
+            from rrlib.rrDFIB import IBConnection
+            from pprint import pprint
+            self.ib = IBConnection()
+            self.log.logger.info("    About to retreive Portfolio")
+            if not self.ib.isConnected():
+                self.ib.connect()
+            # AvailableFunds, BuyingPower, TotalCashValue, NetLiquidation, ExcessLiquidity,
+            # FullInitMarginReq
+            # StockMarketValue, OptionMarketValue, UnrealizedPnL, RealizedPnL
+            acct = pd.DataFrame(self.ib.ib.accountSummary())
+            df = pd.DataFrame({"key": ["AvailableFunds", "BuyingPower", "TotalCashValue", "NetLiquidation",   "ExcessLiquidity", "FullInitMarginReq", "StockMarketValue", "OptionMarketValue", "UnrealizedPnL", "RealizedPnL"],
+                               "value": [acct[acct.tag == "AvailableFunds"].value.item(), acct[acct.tag == "BuyingPower"].value.item(), acct[acct.tag == "TotalCashValue"].value.item(), acct[acct.tag == "NetLiquidation"].value.item(), acct[acct.tag == "ExcessLiquidity"].value.item(), acct[acct.tag == "FullInitMarginReq"].value.item(), acct.loc[(acct['account'] == 'All') & (
+                                   acct["tag"] == "StockMarketValue"), 'value'].values[0], acct.loc[(acct['account'] == 'All') & (
+                                       acct["tag"] == "OptionMarketValue"), 'value'].values[0], acct.loc[(acct['account'] == 'All') & (
+                                           acct["tag"] == "UnrealizedPnL"), 'value'].values[0], acct.loc[(acct['account'] == 'All') & (
+                                               acct["tag"] == "RealizedPnL"), 'value'].values[0]]})
             return df
