@@ -34,7 +34,7 @@ class StockDataFetcher():
         import configparser
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
-        # Get datasouce from IB or Public
+        # Get datasource from IB or Public
         self.source = config.get('datasource', 'source')
         # For manual fetching set time out
         self.timeout = int(config['urlfetcher']['Timeout'])
@@ -63,7 +63,7 @@ class StockDataFetcher():
             from rrlib.rrDFPublic import StockDFPublic as sdfp
             df = sdfp(self.symbol).getIntradayData()
             self.log.logger.debug("   Values loaded: \n"+str(df))
-        elif(self.souce == "ib"):
+        elif(self.source == "ib"):
             self.log.logger.debug("   Loading intraday from IB")
             # implement class for ib retreival
             df = pd.DataFrame()
@@ -97,7 +97,7 @@ class OptionDataFetcher():
             from rrlib.rrDFPublic import OptionDFPublic as odfp
             df = odfp(self.symbol).getData(month, strike)
             self.log.logger.debug("   Values loaded: \n"+str(df))
-        elif(self.souce == "ib"):
+        elif(self.source == "ib"):
             self.log.logger.debug("   Loading intraday from IB")
             # implement class for ib retreival
             df = pd.DataFrame()
@@ -112,7 +112,7 @@ class OptionDataFetcher():
             from rrlib.rrDFPublic import OptionDFPublic as odfp
             df = odfp(self.symbol).getStrikes()
             self.log.logger.debug("   Values loaded: \n"+str(df))
-        elif(self.souce == "ib"):
+        elif(self.source == "ib"):
             self.log.logger.debug("   Loading intraday from IB")
             # implement class for ib retreival
             df = pd.DataFrame()
@@ -127,7 +127,7 @@ class OptionDataFetcher():
             from rrlib.rrDFPublic import OptionDFPublic as odfp
             df = odfp(self.symbol).getExpirations()
             self.log.logger.debug("   Values loaded: \n"+str(df))
-        elif(self.souce == "ib"):
+        elif(self.source == "ib"):
             self.log.logger.debug("   Loading intraday from IB")
             # implement class for ib retreival
             df = pd.DataFrame()

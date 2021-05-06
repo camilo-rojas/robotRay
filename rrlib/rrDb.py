@@ -1,4 +1,11 @@
-#!/usr/bin/env python3
+from tqdm import tqdm
+import time
+import os
+import sys
+import datetime
+import peewee as pw
+import pandas as pd
+# !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on 07 05 2019
@@ -18,13 +25,6 @@ Entities:
 
 """
 
-import pandas as pd
-import peewee as pw
-import datetime
-import sys
-import os
-import time
-from tqdm import tqdm
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 db = pw.SqliteDatabase('rrDb.db')
@@ -167,7 +167,7 @@ class rrDbManager:
                     import configparser
                     config = configparser.ConfigParser()
                     config.read("rrlib/robotRay.ini")
-                    strikePctg = float(config['thinker']['strikePctg'])
+                    strikePctg = float(config['sellputstrategy']['strikePctg'])
                     strike = int((price*0.3+price/(1+perfWeek)*0.3+price/(1+perfMonth)
                                   * 0.3+price/(1+perfQuarter)*0.1)*(1-strikePctg))
                     # round
@@ -181,10 +181,10 @@ class rrDbManager:
                     try:
                         strikes = optFetcher(stock.ticker).getStrikes()
                         if strike not in strikes.values:
-                            strike = min(strikes.values, key=lambda x: abs(x-strike))
+                            strike = int(min(strikes.values, key=lambda x: abs(x-strike)))
                     except Exception:
                         self.log.logger.warning("  Exception with strikes for:"+stock.ticker)
-                    row = {'stock': stock.ticker, 'strike': str(strike), 'timestamp': str(datetime.datetime.now()),
+                    row = {'stock': stock.ticker, 'strike': str(int(strike)), 'timestamp': str(datetime.datetime.now()),
                            'price': dataFetcher.iloc[68]['value'], 'prevClose': dataFetcher.iloc[62]['value'],
                            'salesqq': dataFetcher.iloc[53]['value'], 'sales5y': dataFetcher.iloc[47]['value'],
                            'beta': dataFetcher.iloc[44]['value'], 'roe': dataFetcher.iloc[36]['value'],
@@ -324,6 +324,20 @@ class rrDbManager:
         except Exception as e:
             self.log.logger.error(
                 "    Error completing expiration date "+monthYear)
+            self.log.logger.error(e)
+            return False
+        return completeDate
+
+    def getDatebyMonth(self, month):
+        try:
+            self.log.logger.debug("    Completing expiration date for "+str(month))
+            currentMonth = datetime.datetime.now().month
+            retreiveDate = ExpirationDate.select().where(
+                ExpirationDate.id == int(month)).get().date
+            completeDate = retreiveDate.strftime("%Y-%m-%d")
+        except Exception as e:
+            self.log.logger.error(
+                "    Error completing expiration date "+month)
             self.log.logger.error(e)
             return False
         return completeDate

@@ -77,30 +77,32 @@ class StockDFIB():
         self.ib = IBConnection()
 
     def getData(self):
-        self.log.logger.info("    About to connect to IB for "+self.symbol)
-        self.ib.connect()
-        self.log.logger.info("    Connected to IB for "+self.symbol)
+        from rrlib.rrDFPublic import StockDFPublic as sdfp
+        self.log.logger.debug("    About to connect to IB for "+self.symbol)
+        if not self.ib.isConnected():
+            self.ib.connect()
+        self.log.logger.debug("    Connected to IB for "+self.symbol)
         stock = Stock(self.symbol, "SMART", "USD")
         self.ib.ib.qualifyContracts(stock)
         self.ib.ib.reqContractDetails(stock)
         bars = self.ib.ib.reqHistoricalData(stock, endDateTime='', durationStr='1 D', barSizeSetting='1 day', whatToShow='TRADES',
                                             useRTH=True, formatDate=1, keepUpToDate=False)
         df = util.df(bars)
-        self.log.logger.info("    Fetched data from IB for "+self.symbol)
-        self.log.logger.info("      DAta: "+str(df))
+        self.log.logger.debug("    Fetched data from IB for "+self.symbol)
+        self.log.logger.debug("      Data: "+str(df))
         df = pd.DataFrame(columns=['key', 'value'])
+        df = sdfp(self.symbol).getData()
         pd.set_option("display.max_rows", None, "display.max_columns", None)
-        self.log.logger.info("   Values loaded: \n"+str(df))
-        self.log.logger.info(
-            "    DONE - Stock Public Data Fetcher "+str(self.symbol))
-        self.ib.disconnect()
+        self.log.logger.debug("   Values loaded: \n"+str(df))
+        self.log.logger.debug(
+            "    DONE - Interactive Brokers Data Fetcher "+str(self.symbol))
         return df
 
     def getIntradayData(self):
         self.log.logger.debug("    About to retreive "+self.symbol)
         if not self.ib.isConnected():
             self.ib.connect()
-        self.log.logger.info("    Connected to IB for "+self.symbol)
+        self.log.logger.debug("    Connected to IB for "+self.symbol)
         stock = Stock(self.symbol, "SMART", "USD")
         self.ib.ib.reqContractDetails(stock)
         data = self.ib.ib.reqMktData(stock)
@@ -111,13 +113,11 @@ class StockDFIB():
         pchg = round(((float(data.marketPrice()) -
                        float(dfBar[:-1].close))/float(dfBar[:-1].close)*100), 2)
         volchg = round(data.volume/float(dfBar[:-1].volume), 2)
-        df = pd.DataFrame(columns=['stock', 'price', '%Change', '%Volume'])
+        df = pd.DataFrame()
         df = df.append({'stock': self.symbol, 'price': str(data.marketPrice()),
-                        '%Change': str(pchg),
-                        '%Volume': str(volchg)
-                        }, ignore_index=True)
-        self.log.logger.info("   Values loaded: \n"+str(df))
-        self.log.logger.info(
+                        '%Change': str(pchg), '%Volume': str(volchg)}, ignore_index=True)
+        self.log.logger.debug("   Values loaded: \n"+str(df))
+        self.log.logger.debug(
             "    DONE - Stock Intraday Public Data Fetcher "+str(self.symbol))
         return df
 
@@ -130,17 +130,29 @@ class OptionDFIB():
         self.symbol = symbol
         self.log = logger()
         self.log.logger.debug("    Init Option IB Data Fetcher for "+symbol)
-        # timeout import
-        import configparser
-        config = configparser.ConfigParser()
-        config.read("rrlib/robotRay.ini")
-        self.ib_ip = config['ib']['ip']
-        self.ib_port = int(config['ib']['port'])
+        # Define IB Connection
+        self.ib = IBConnection()
 
     # Strike int, month is int and the number of months after today
     def getData(self, month, strike):
         # https://finance.yahoo.com/quote/WDAY200117P00160000
         # Get the put value for specified month 3-8
+        """
+        getoptiondata return pd [
+        1 - open price
+        2 - bid
+        3 - ask
+        5 - expiration date
+        6 - day range
+        8 - volume
+        9 - open interest
+        10 - price
+        ]
+
+        """
+        from rrlib.rrOptions import OptionManager
+        if not self.ib.isConnected():
+            self.ib.connect()
         month = int(month)
         df = pd.DataFrame(columns=['key', 'value'])
         if (3 <= month <= 8):
@@ -148,6 +160,26 @@ class OptionDFIB():
             self.log.logger.debug("    Done Option loaded: \n"+str(df))
             self.log.logger.debug(
                 "    Getting Public Option loaded: "+self.symbol+" for month "+str(month))
+            date = OptionManager.getDatebyMonth(month)
+            option = Option(self.symbol, date.replace('-', ''),
+                            int(strike), 'P', 'SMART', multiplier=100)
+            pd.set_option("display.max_rows", None, "display.max_columns", None)
+            # self.ib.ib.qualifyContracts(option)
+            data = self.ib.ib.reqMktData(option)
+            self.ib.ib.sleep(1)
+            df = df.append({'key': 'Previous Close', 'value': data.last}, ignore_index=True)
+            df = df.append({'key': 'Open', 'value': data.last}, ignore_index=True)
+            df = df.append({'key': 'Bid', 'value': data.bid}, ignore_index=True)
+            df = df.append({'key': 'Ask', 'value': data.ask}, ignore_index=True)
+            df = df.append({'key': 'Strike', 'value': strike}, ignore_index=True)
+            df = df.append(
+                {'key': 'Expire Date', 'value': date}, ignore_index=True)
+            df = df.append(
+                {'key': 'Day\'s Range', 'value': str(data.high)+" - "+str(data.low)}, ignore_index=True)
+            df = df.append({'key': 'Contract Range', 'value': 0}, ignore_index=True)
+            df = df.append({'key': 'Volume', 'value': data.volume}, ignore_index=True)
+            df = df.append({'key': 'Open Interest', 'value': "NA"}, ignore_index=True)
+            df = df.append({'key': 'price', 'value': data.last}, ignore_index=True)
             return df
         else:
             self.log.logger.error(

@@ -33,3 +33,9 @@ class OptionManager:
         else:
             trailer = "P"
         return str(stock+ymd+trailer+str(strike)+"000")
+
+    def getDatebyMonth(month):
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        from rrlib.rrDb import rrDbManager
+        db = rrDbManager()
+        return db.getDatebyMonth(month)

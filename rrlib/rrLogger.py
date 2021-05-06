@@ -30,7 +30,19 @@ PREFIX = '\033['
 SUFFIX = '\033[0m'
 
 
-class logger:
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(
+                Singleton, cls).__call__(*args, **kwargs)
+        # else:
+        #    cls._instances[cls].__init__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class logger(metaclass=Singleton):
     def __init__(self):
         self.logger = logging.getLogger("rrLog")
         self.logger.setLevel(logging.INFO)

@@ -83,7 +83,10 @@ class OptionDFPublic():
 
     def getStrikes(self):
         stock = yf.Ticker(self.symbol)
-        opt = stock.option_chain(stock.options[6])
+        try:
+            opt = stock.option_chain(stock.options[6])
+        except Exception:
+            opt = stock.option_chain(stock.options[2])
         return opt.puts.strike
 
     # Strike int, month is int and the number of months after today

@@ -49,31 +49,32 @@ class rrPutSellStrategy:
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
         # daily decrease green if % stock dtd growth < -4.5%, -4.5% < yellow < 2%, red > 2%
-        self.dayPriceChgGreen = config.get('thinker', 'dayPriceChgGreen')
-        self.dayPriceChgRed = config['thinker']['dayPriceChgRed']
+        self.dayPriceChgGreen = config.get('sellputstrategy', 'dayPriceChgGreen')
+        self.dayPriceChgRed = config['sellputstrategy']['dayPriceChgRed']
         # expected minimum monthly premium for holding the option 1%
         self.monthlyPremium = self.portfolio.monthlyPremium
         # sma200 below 0 is red, <0.1 yellow, > 0.1 green
-        self.smaGreen = config['thinker']['smaGreen']
-        self.smaRed = config['thinker']['smaRed']
+        self.smaGreen = config['sellputstrategy']['smaGreen']
+        self.smaRed = config['sellputstrategy']['smaRed']
         # sales growth quarter to quarter
-        self.salesGrowthGreen = config['thinker']['salesGrowthGreen']
-        self.salesGrowthRed = config['thinker']['salesGrowthRed']
+        self.salesGrowthGreen = config['sellputstrategy']['salesGrowthGreen']
+        self.salesGrowthRed = config['sellputstrategy']['salesGrowthRed']
         # retreive R
         self.R = self.portfolio.R
+        self.availableFunds = self.portfolio.funds
         # Intraday kpi green and red
-        self.IntradayKPIGreen = config['thinker']['IntradayKPIGreen']
-        self.IntradayKPIRed = config['thinker']['IntradayKPIRed']
+        self.IntradayKPIGreen = config['sellputstrategy']['IntradayKPIGreen']
+        self.IntradayKPIRed = config['sellputstrategy']['IntradayKPIRed']
         # Get IFTTT key for future use on notifications
         self.IFTTT = config['ifttt']['key']
         # Get number of days to BTC on Options
-        self.BTCdays = config['thinker']['BTCdays']
+        self.BTCdays = config['sellputstrategy']['BTCdays']
         # Get option expected price flexiblity to ask limit
-        self.ExpPrice2Ask = config['thinker']['ExpPrice2Ask']
+        self.ExpPrice2Ask = config['sellputstrategy']['ExpPrice2Ask']
         # is telegram bot enabled for commands
         self.startbot = config.get('telegram', 'startbot')
         # Get verbose option boolean
-        self.verbose = config['thinker']['verbose']
+        self.verbose = config['sellputstrategy']['verbose']
         self.log.logger.debug("  Put Sell Strategy module starting.  ")
 
     def evaluateProspects(self):
@@ -93,7 +94,7 @@ class rrPutSellStrategy:
                                  str(float(self.smaGreen)*100) +
                                  "%, for Red Day:" + str(float(self.smaRed*100))+"%")
             self.log.logger.info("     Available funds in portfolio: USD$" +
-                                 str(float(self.R)/0.02)+", R (risk money per trade):USD$" + self.R)
+                                 str(self.availableFunds)+", R (risk money per trade):USD$" + self.R)
 
         try:
             for stock in tqdm(IntradayStockData.select(), desc="Getting KPI's of Stock Data:", unit="Stock", ascii=False, ncols=120, leave=False):
