@@ -27,8 +27,10 @@ class rrTelegram:
         self.log = logger()
         # starting backend services
         from rrlib.rrDb import rrDbManager
+        from rrlib.rrPutSellStrategy import rrPutSellStrategy as rps
         from rrlib.rrController import rrController
         self.db = rrDbManager()
+        self.sellp = rps()
         self.cont = rrController()
         # starting ini parameters
         config = configparser.ConfigParser()
@@ -71,8 +73,25 @@ class rrTelegram:
     def textCommand(self, update, context):
         text_received = update.message.text
         response = self.cont.botcommand(text_received)
-        for x in response:
-            update.message.reply_text(f'{x}')
+        if len(response) > 0:
+            for message in response[1:]:
+                update.message.reply_text(f'{message}')
+            if response[0] != "":
+                if response[0].startswith("db."):
+                    func = getattr(self.db, response[0].split("db.", 1)[1])
+                    if response[0].split("db.", 1)[1].startswith("print"):
+                        print(func())
+                    else:
+                        func()
+                elif response[0].startswith("sellp."):
+                    func = getattr(self.sellp, response[0].split("sellp.", 1)[1])
+                    if response[0].split("sellp.", 1)[1].startswith("print"):
+                        print(func())
+                    else:
+                        func()
+                else:
+                    func = getattr(self, response[0])
+                    func()
 
     def startbot(self):
         self.dp.add_handler(CommandHandler("start", self.start))

@@ -30,7 +30,7 @@ class rrController():
         from rrlib.rrDb import rrDbManager
         self.db = rrDbManager()
         self.bt = rrBacktrader()
-        self.rrPutSellStrategy = rrPutSellStrategy()
+        self.sellp = rrPutSellStrategy()
         self.rrGoldenStrategy = rrGoldenStrategy()
         # starting ini parameters
         config = configparser.ConfigParser()
@@ -45,10 +45,12 @@ class rrController():
         response = []
         command = command.lower()
         if (command == "intro" or command == "about"):
+            response.append("")
             response.append("RobotRay by Camilo Rojas")
         elif(command == "help"):
+            response.append("")
             response.append(
-                "RobotRay help menu - for Telegram")
+                "RobotRay Help Menu - for Telegram")
             response.append(
                 "General Commands: help, status, source, jobs, intro, about")
             response.append(
@@ -59,6 +61,7 @@ class rrController():
             response.append(
                 "Statistics for bot operations: report, reporty, reportytd, reportsm, reportw")
         elif (command == "source"):
+            response.append("")
             if (self.db.getSource() == "public"):
                 response.append("Current data fetched from: Finviz & Yahoo")
             elif (self.db.getSource() == "ib"):
@@ -66,27 +69,44 @@ class rrController():
             else:
                 response.append(self.db.getSource())
         elif (command == "printstocks"):
+            response.append("")
             response.append("Stocks being tracked")
             response.append(self.db.printStocks())
         elif (command == "printintra"):
+            response.append("")
             response.append("Stocks current intraday data")
             response.append(self.db.printIntradayStocks())
         elif (command == "printoptions"):
+            response.append("")
             response.append("Options data")
             response.append(self.db.printOptions())
         elif (command == "printopenp"):
+            response.append("")
             response.append("Open Prospect data")
-            response.append(self.rrPutSellStrategy.printOpenProspects())
+            response.append(self.sellp.printOpenProspects())
         elif (command == "printclosedp"):
+            response.append("")
             response.append("Closed Prospect data")
-            response.append(self.rrPutSellStrategy.printClosedProspects())
+            response.append(self.sellp.printClosedProspects())
         elif (command == "printallp"):
+            response.append("")
             response.append("All Prospect data sorted by PNL")
-            response.append(self.rrPutSellStrategy.printAllProspects())
+            response.append(self.sellp.printAllProspects())
         elif(command == "sendp"):
+            response.append("")
             response.append("Sent daily report of prospects")
-            self.rrPutSellStrategy.sendDailyReport()
+            self.sellp.sendDailyReport()
+        elif(command == "getstockdata"):
+            response.append("db.getStockData")
+            response.append("Getting stock data manually")
+        elif(command == "getintra"):
+            response.append("db.getIntradayData")
+            response.append("Getting stock intraday data manually")
+        elif(command == "getoptiondata"):
+            response.append("db.getOptionData")
+            response.append("Getting stock option data manually")
         elif(command == "status"):
+            response.append("")
             response.append("Status report RobotRay.")
             if (self.db.getSource() == "public"):
                 response.append("Current data fetched from: Finviz & Yahoo")
@@ -95,11 +115,14 @@ class rrController():
             else:
                 response.append(self.db.getSource())
         elif(command == "jobs"):
+            response.append("")
             response.append("Currently running: " +
                             str(threading.active_count())+" threads.")
         elif(command == ""):
+            response.append("")
             response.append("No command sent")
         else:
+            response.append("")
             response.append("Unknown command, try help for commands")
         return response
 
@@ -108,44 +131,54 @@ class rrController():
         command = command.lower()
         try:
             if (command == "intro" or command == "about"):
-                response.append("self.intro()")
+                response.append("intro")
             elif(command == "quit" or command == "exit"):
                 if input("\n998. Really quit? (y/n)>").lower().startswith('y'):
-                    response.append("self.shutdown()")
+                    response.append("shutdown")
             elif(command == "help"):
                 response.append("")
                 response.append(
                     "================================================================")
                 response.append(
-                    "RobotRay help menu - commands and manual override options")
+                    "RobotRay Help Menu - commands and manual override options")
                 response.append(
                     "================================================================")
                 response.append("")
                 response.append(
-                    "995. General Commands: help, clear, status, source, jobs, isdbinuse, quit, exit, intro, about")
+                    " General Commands: help, clear, status, source, jobs,")
+                response.append(
+                    "   isdbinuse, quit, exit, intro, about")
                 response.append(
                     "----------------------------------------------------------------")
                 response.append(
-                    "995. The following are scheduled automatically, run only for override")
+                    " The following are scheduled automatically, run only for override")
                 response.append(
-                    "995. Stock Data refresh manual commands: getstockdata, getintradaydata")
+                    " Stock Data refresh manual commands: getstockdata, getintradaydata")
                 response.append(
-                    "995. Option Data refresh manual commands: getoptiondata")
+                    " Option Data refresh manual commands: getoptiondata")
+                response.append(
+                    "----------------------------------------------------------------")
+                response.append(" Portfolio commands (TBD): switchsource, ")
+                response.append("   getPositions, getAccount, getBuyingPower ")
+                response.append("   getAvailableFunds, getCash, getUnrPNL, getRPNL ")
+                response.append("   getTrades, getOpenTrades, getOpenOrders, getOrders ")
                 response.append(
                     "----------------------------------------------------------------")
                 response.append(
-                    "995. Stock Data info commands: printstocks, printintra")
-                response.append("995. Option Data info commands: printoptions")
+                    " Stock Data info commands: printstocks, printintra")
+                response.append(" Option Data info commands: printoptions")
                 response.append(
-                    "995. Run prospect info: printallp, printopenp, printclosedp, sendp")
-                response.append(
-                    "----------------------------------------------------------------")
-                response.append("995. Strategies: sellputs, golden")
-                response.append("995. Backtrader: btdownload, btsellputs, btgolden")
+                    " Run prospect info: printallp, printopenp, printclosedp, sendp")
                 response.append(
                     "----------------------------------------------------------------")
+                response.append(" Strategies: sellputs, golden")
+                response.append(" Backtrader: btdownload, btsellputs, btgolden")
                 response.append(
-                    "995. Statistics for bot operations: report, reporty, reportytd, reportsm, reportw")
+                    "----------------------------------------------------------------")
+                response.append(
+                    " Statistics for bot operations (TBD): report, reporty, ")
+                response.append(
+                    "    reportytd, reportsm, reportw")
                 response.append(
                     "================================================================")
             elif(command == "clear"):
@@ -173,25 +206,25 @@ class rrController():
             #    keyring.set_password("RobotRayIB", "camilo", passwd)
             #    print(keyring.get_password("RobotRayIB", "camilo"))
             elif (command == "printstocks"):
-                response.append("print(self.db.printStocks())")
+                response.append("db.printStocks")
                 response.append("550. Stocks being tracked:")
             elif (command == "printintra"):
-                response.append("print(self.db.printIntradayStocks())")
+                response.append("db.printIntradayStocks")
                 response.append("560. Stocks current intraday data:")
             elif (command == "printoptions"):
-                response.append("print(self.db.printOptions())")
+                response.append("db.printOptions")
                 response.append("570. Options data:")
             elif (command == "printopenp"):
-                response.append("print(rrPutSellStrategy().printOpenProspects())")
+                response.append("sellp.printOpenProspects")
                 response.append("130. Open Prospect data:")
             elif (command == "printclosedp"):
-                response.append("print(rrPutSellStrategy().printClosedProspects())")
+                response.append("sellp.printClosedProspects")
                 response.append("130. Closed Prospect data:")
             elif (command == "printallp"):
-                response.append("print(rrPutSellStrategy().printAllProspects())")
+                response.append("sellp.printAllProspects")
                 response.append("130. Prospect data:")
             elif(command == "sendp"):
-                self.rrPutSellStrategy.sendDailyReport()
+                self.sellp.sendDailyReport()
             elif(command == "status"):
                 self.status()
             elif(command == "getstockdata"):
@@ -329,16 +362,16 @@ class rrController():
             try:
                 self.log.logger.info(
                     "     110. Evaluating daily drops and pricing opptys for elegible stocks")
-                self.rrPutSellStrategy.evaluateProspects()
+                self.sellp.evaluateProspects()
                 self.log.logger.info(
                     "     120. Updating pricing for existing prospects")
-                self.rrPutSellStrategy.updatePricingProspects()
+                self.sellp.updatePricingProspects()
                 self.log.logger.info(
                     "     130. Communicating prospects")
-                self.rrPutSellStrategy.communicateProspects()
+                self.sellp.communicateProspects()
                 self.log.logger.info(
                     "     140. Communicating closings")
-                self.rrPutSellStrategy.communicateClosing()
+                self.sellp.communicateClosing()
                 self.db.updateServerRun(lastThinkUpdate=datetime.datetime.now())
                 self.log.logger.info("100. DONE - Finished Sell Puts Strategy")
             except Exception as e:
@@ -350,7 +383,7 @@ class rrController():
             "200. Sending report to IFTTT")
         if self.ismarketopen() or self.oth == "Yes":
             try:
-                self.rrPutSellStrategy.sendDailyReport()
+                self.sellp.sendDailyReport()
                 self.log.logger.info("200. DONE - Finished sending report")
             except Exception as e:
                 self.log.logger.error("200. Error sending report")

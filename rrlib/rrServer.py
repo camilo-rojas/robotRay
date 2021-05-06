@@ -84,6 +84,9 @@ class server():
             self.bot = rrTelegram()
             self.db.updateServerRun(telegramBotEnabled="Yes")
             self.log.logger.info("05. DONE - Starting Telegram bot")
+        self.log.logger.info("06. Starting strategies")
+        self.sellp = rrPutSellStrategy()
+        self.log.logger.info("06. DONE - Starting strategies")
         self.log.logger.info(
             "-- Finished Startup robotRay server. Starting schedule.")
         self.log.logger.info("")
@@ -110,7 +113,21 @@ class server():
                     for message in response[1:]:
                         self.log.logger.info(message)
                     if response[0] != "":
-                        exec(response[0])
+                        if response[0].startswith("db."):
+                            func = getattr(self.db, response[0].split("db.", 1)[1])
+                            if response[0].split("db.", 1)[1].startswith("print"):
+                                print(func())
+                            else:
+                                func()
+                        elif response[0].startswith("sellp."):
+                            func = getattr(self.sellp, response[0].split("sellp.", 1)[1])
+                            if response[0].split("sellp.", 1)[1].startswith("print"):
+                                print(func())
+                            else:
+                                func()
+                        else:
+                            func = getattr(self, response[0])
+                            func()
             except KeyboardInterrupt:
                 self.running = False
                 self.shutdown()
