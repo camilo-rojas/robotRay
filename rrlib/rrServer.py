@@ -77,6 +77,7 @@ class server():
         self.stockoptioninverval = int(config.get('scheduler', 'stockoptioninverval'))
         self.dailyreport = config.get('scheduler', 'dailyreport')
         self.dailyscan = config.get('scheduler', 'dailyscan')
+        self.goldenTime = config.get('scheduler', 'goldenTime')
         self.scheduler()
         self.log.logger.info("04. DONE - Scheduling daily scanners")
         self.startbot = config.get('telegram', 'startbot')
@@ -103,6 +104,8 @@ class server():
             self.run_threaded, self.controller.sendReport)
         schedule.every().day.at(self.dailyscan).do(
             self.run_threaded, self.controller.dailyScan)
+        schedule.every().day.at(self.goldenTime).do(
+            self.run_threaded, self.controller.goldenstrategy)
 
     def runServer(self):
         self.run_threaded(self.runScheduler)

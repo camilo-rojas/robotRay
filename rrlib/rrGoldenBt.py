@@ -20,7 +20,6 @@ class rrGoldenBt:
     def __init__(self, symbol):
         # Starting common services
         from rrlib.rrLogger import logger, TqdmToLogger
-        from rrlib.rrDb import rrDbManager
         from rrlib.rrBacktrader import rrBacktrader
         from rrlib.rrPortfolio import rrPortfolio
         # Get logging service
@@ -69,9 +68,7 @@ class rrGoldenBt:
         self.log.logger.info(
             f'   Golden Strategy BT for {self.symbol} generated a {round((finalbalance-initialbalance)/initialbalance*100,2)}%')
         # plot the strategy if generates outstanding value
-        if self.symbol == "CRM":
-            # remove ./venv/lib/python3.9/site-packages/backtrader/plot/locator.py warning import
-            self.cerebro.plot()
+        # TODO plot send to somewhere
 
 
 class GoldenStrategy(bt.Strategy):

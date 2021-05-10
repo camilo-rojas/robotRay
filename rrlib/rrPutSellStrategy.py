@@ -108,7 +108,7 @@ class rrPutSellStrategy:
                         else:
                             price = higherOptionData.expectedPremium
                         # found a prospect
-                        if float(price) < float(higherOptionData.ask)*float(self.ExpPrice2Ask):
+                        if float(price) < float(higherOptionData.ask)*float(self.ExpPrice2Ask) and float(higherOptionData.contracts) > 0:
                             self.log.logger.info(
                                 "     Put Sell Strategy found a prospect with green day decline and also green KPI, STO Puts for: "+stock.stock)
                             self.log.logger.info(self.prospectFormatter(stock.stock, str(higherOptionData.expireDate), strike, price,
@@ -135,7 +135,7 @@ class rrPutSellStrategy:
                         else:
                             price = higherOptionData.expectedPremium
                         # found a prospect
-                        if float(price) < float(higherOptionData.ask)*float(self.ExpPrice2Ask):
+                        if float(price) < float(higherOptionData.ask)*float(self.ExpPrice2Ask) and float(higherOptionData.contracts) > 0:
                             self.log.logger.info(
                                 "     Put Sell Strategy found a prospect with yellow day decline and also green KPI, STO Puts for: "+stock.stock)
                             self.log.logger.info(self.prospectFormatter(stock.stock, str(higherOptionData.expireDate), strike, price,

@@ -176,6 +176,9 @@ class rrController():
                 response.append(" Backtrader: btdownload, btsellputs, btgolden")
                 response.append(
                     "----------------------------------------------------------------")
+                response.append(" Daily scanner override: dailyscan")
+                response.append(
+                    "----------------------------------------------------------------")
                 response.append(
                     " Statistics for bot operations (TBD): report, reporty, ")
                 response.append(
