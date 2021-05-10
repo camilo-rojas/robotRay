@@ -17,6 +17,7 @@ import datetime
 from rrlib.rrPutSellStrategy import rrPutSellStrategy
 from rrlib.rrGoldenStrategy import rrGoldenStrategy
 from rrlib.rrBacktrader import rrBacktrader
+from rrlib.rrDailyScan import rrDailyScan
 
 
 class rrController():
@@ -243,6 +244,8 @@ class rrController():
                 self.sellputsstrategy()
             elif(command == "btdownload"):
                 self.btdownloader()
+            elif(command == "dailyscan"):
+                self.dailyScan()
             elif(command == "btgolden"):
                 self.btgolden()
             elif(command == "btsellputs"):
@@ -307,6 +310,19 @@ class rrController():
                 self.sellputsstrategy()
             except Exception as e:
                 self.log.logger.error("30. Error fetching Intraday data")
+                self.log.logger.error(e)
+
+    def dailyScan(self):
+        self.log.logger.info("85. Running daily scan")
+        if self.ismarketopen() or self.oth == "Yes":
+            try:
+                self.btdownloader()
+                ds = rrDailyScan()
+                ds.communicateScan()
+                self.log.logger.info(
+                    "85. DONE - Ran daily scanner")
+            except Exception as e:
+                self.log.logger.error("85. Error running daily scann")
                 self.log.logger.error(e)
 
     def btdownloader(self):
@@ -380,7 +396,7 @@ class rrController():
 
     def sendReport(self):
         self.log.logger.info(
-            "200. Sending report to IFTTT")
+            "200. Sending report")
         if self.ismarketopen() or self.oth == "Yes":
             try:
                 self.sellp.sendDailyReport()

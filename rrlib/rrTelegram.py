@@ -102,4 +102,5 @@ class rrTelegram:
         self.upd.start_polling()
 
     def sendMessage(self, message=""):
-        self.upd.bot.send_message(self.chatid, text=message)
+        if self.APIkey != "":
+            self.upd.bot.send_message(self.chatid, text=message)

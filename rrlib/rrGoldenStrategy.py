@@ -84,7 +84,7 @@ class rrGoldenStrategy:
             self.log.logger.error(e)
 
     def communicateProspects(self, stock, gord):
-        import requests
+        from rrlib.rrIFTTT import rrIFTTT
         from rrlib.rrTelegram import rrTelegram
         try:
             report = {}
@@ -95,17 +95,13 @@ class rrGoldenStrategy:
                 "    Communicator , invoking with these parameters "+str(report))
             self.db.updateServerRun(prospectsFound="Yes")
             try:
-                r = requests.post(
-                    "https://maker.ifttt.com/trigger/robotray_sto_comm/with/key/"+self.IFTTT, data=report)
-                if (self.startbot == "Yes"):
-                    rrTelegram().sendMessage(
-                        str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
-                if r.status_code == 200:
-                    pass
+                rrIFTTT().send(report)
+                rrTelegram().sendMessage(
+                    str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
 
             except Exception as e:
                 self.log.logger.error(
-                    "     Golden Strategy prospect IFTTT error")
+                    "     Golden Strategy communicating error")
                 self.log.logger.error(e)
         except Exception as e:
             self.log.logger.error(

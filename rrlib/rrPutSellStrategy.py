@@ -65,8 +65,6 @@ class rrPutSellStrategy:
         # Intraday kpi green and red
         self.IntradayKPIGreen = config['sellputstrategy']['IntradayKPIGreen']
         self.IntradayKPIRed = config['sellputstrategy']['IntradayKPIRed']
-        # Get IFTTT key for future use on notifications
-        self.IFTTT = config['ifttt']['key']
         # Get number of days to BTC on Options
         self.BTCdays = config['sellputstrategy']['BTCdays']
         # Get option expected price flexiblity to ask limit
@@ -175,9 +173,9 @@ class rrPutSellStrategy:
         return message
 
     def communicateProspects(self):
-        import requests
         import datetime
         from rrlib.rrTelegram import rrTelegram
+        from rrlib.rrIFTTT import rrIFTTT
         from rrlib.rrDb import ProspectData as pd
         try:
             for prospect in pd.select().where(pd.STOcomm.is_null()):
@@ -192,12 +190,10 @@ class rrPutSellStrategy:
                     "    Communicator , invoking with these parameters "+str(report))
                 self.db.updateServerRun(prospectsFound="Yes")
                 try:
-                    r = requests.post(
-                        "https://maker.ifttt.com/trigger/robotray_sto_comm/with/key/"+self.IFTTT, data=report)
-                    if (self.startbot == "Yes"):
-                        rrTelegram().sendMessage(
-                            str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
-                    if r.status_code == 200:
+                    r = rrIFTTT().send(report)
+                    rrTelegram().sendMessage(
+                        str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
+                    if r == 200:
                         pd.update({pd.STOcomm: datetime.datetime.today()}).where((pd.stock == prospect.stock) &
                                                                                  (pd.strike == prospect.strike) &
                                                                                  (pd.expireDate == prospect.expireDate)).execute()
@@ -212,9 +208,9 @@ class rrPutSellStrategy:
             self.log.logger.error(e)
 
     def communicateClosing(self):
-        import requests
         import datetime
         from rrlib.rrTelegram import rrTelegram
+        from rrlib.rrIFTTT import rrIFTTT
         from rrlib.rrDb import ProspectData as pd
         try:
             for prospect in pd.select().where(pd.BTCcomm.is_null()):
@@ -235,12 +231,11 @@ class rrPutSellStrategy:
                         "    Communicator, invoking with these parameters " + str(report))
                     self.db.updateServerRun(pnl=pnl)
                     try:
-                        r = requests.post(
-                            "https://maker.ifttt.com/trigger/robotray_btc_comm/with/key/"+self.IFTTT, data=report)
+                        r = rrIFTTT().send(report)
                         if (self.startbot == "Yes"):
                             rrTelegram().sendMessage(
                                 str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
-                        if r.status_code == 200:
+                        if r == 200:
                             pd.update({pd.BTCcomm: datetime.datetime.today(), pd.pnl: pnl}).where((pd.stock == prospect.stock) &
                                                                                                   (pd.strike == prospect.strike) &
                                                                                                   (pd.expireDate == prospect.expireDate)).execute()
@@ -297,7 +292,7 @@ class rrPutSellStrategy:
     def sendDailyReport(self):
         from rrlib.rrDb import ProspectData as pd
         from rrlib.rrTelegram import rrTelegram
-        import requests
+        from rrlib.rrIFTTT import rrIFTTT
         pnlClosed = 0
         numClosed = 0
         pnlOpen = 0
@@ -321,16 +316,14 @@ class rrPutSellStrategy:
                 report["value1"])+"\n    "+str(report["value2"])+"\n    "+str(report["value3"]) +
                 "\n    ------------------DAILY REPORT-------------------\n")
             try:
-                r = requests.post(
-                    "https://maker.ifttt.com/trigger/robotray_dailyreport/with/key/"+self.IFTTT, data=report)
-                if (self.startbot == "Yes"):
-                    rrTelegram().sendMessage(
-                        str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
-                if r.status_code == 200:
+                r = rrIFTTT().send(report)
+                rrTelegram().sendMessage(
+                    str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
+                if r == 200:
                     pass
             except Exception as e:
                 self.log.logger.error(
-                    "     Put Sell Strategy daily report IFTTT error")
+                    "     Put Sell Strategy daily report communication error")
                 self.log.logger.error(e)
         except Exception as e:
             self.log.logger.error(

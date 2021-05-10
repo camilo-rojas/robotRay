@@ -9,10 +9,10 @@ Backtrader strategy classes
 
 Process for module
 1. Gather data from yfinance the data for the stocks
+3. Call the strategy backtrader
 
 Pending
 2. Gather data from options (?)
-3. Call the strategy backtrader
 
 """
 
@@ -22,7 +22,6 @@ import peewee as pw
 import datetime
 import sys
 import os
-import time
 from tqdm import tqdm
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))

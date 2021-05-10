@@ -12,4 +12,5 @@ keyring
 ib_insync
 yfinance
 matplotlib
+TA_Lib
 logging

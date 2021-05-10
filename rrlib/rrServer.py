@@ -76,6 +76,7 @@ class server():
         self.stockintrainterval = int(config.get('scheduler', 'stockintrainterval'))
         self.stockoptioninverval = int(config.get('scheduler', 'stockoptioninverval'))
         self.dailyreport = config.get('scheduler', 'dailyreport')
+        self.dailyscan = config.get('scheduler', 'dailyscan')
         self.scheduler()
         self.log.logger.info("04. DONE - Scheduling daily scanners")
         self.startbot = config.get('telegram', 'startbot')
@@ -100,6 +101,8 @@ class server():
             self.run_threaded, self.controller.getOptionData)
         schedule.every().day.at(self.dailyreport).do(
             self.run_threaded, self.controller.sendReport)
+        schedule.every().day.at(self.dailyscan).do(
+            self.run_threaded, self.controller.dailyScan)
 
     def runServer(self):
         self.run_threaded(self.runScheduler)

@@ -7,14 +7,18 @@ import pandas as pd
 if True:
     sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
     from rrlib.rrPortfolio import rrPortfolio
-    print("Start")
     from rrlib.rrDFIB import StockDFIB
     from rrlib.rrDFIB import OptionDFIB
     from rrlib.rrDFPublic import StockDFPublic
     from rrlib.rrDFPublic import OptionDFPublic
     from rrlib.rrDataFetcher import OptionDataFetcher as optFetcher
-    print("Start")
+    from rrlib.rrDailyScan import rrDailyScan as ds
+    from rrlib.rrBacktrader import rrBacktrader as bt
 
+pd.set_option('display.max_columns', None)
+ds().dailyScan()
+
+"""
 stockIB = StockDFIB("AAPL")
 print(stockIB.getIntradayData())
 print(stockIB.getData())
@@ -27,8 +31,6 @@ print(option.getData(3, 160))
 
 op = OptionDFPublic("CRM")
 print(op.getData(3, 160))
-
-"""
 p = rrPortfolio()
 p.switchSource("ib")
 option = OptionDFIB("CRM")
