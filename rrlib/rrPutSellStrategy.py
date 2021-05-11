@@ -193,10 +193,10 @@ class rrPutSellStrategy:
                     r = rrIFTTT().send(report)
                     rrTelegram().sendMessage(
                         str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
-                    if r == 200:
-                        pd.update({pd.STOcomm: datetime.datetime.today()}).where((pd.stock == prospect.stock) &
-                                                                                 (pd.strike == prospect.strike) &
-                                                                                 (pd.expireDate == prospect.expireDate)).execute()
+                    print("Enviado por IFTT:"+str(r))
+                    if str(r) == "<Response [200]>":
+                        pd.update({pd.STOcomm: datetime.datetime.today()}).where((pd.stock == prospect.stock) & (
+                            pd.strike == prospect.strike) & (pd.expireDate == prospect.expireDate)).execute()
 
                 except Exception as e:
                     self.log.logger.error(
@@ -235,7 +235,7 @@ class rrPutSellStrategy:
                         if (self.startbot == "Yes"):
                             rrTelegram().sendMessage(
                                 str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
-                        if r == 200:
+                        if str(r) == "<Response [200]>":
                             pd.update({pd.BTCcomm: datetime.datetime.today(), pd.pnl: pnl}).where((pd.stock == prospect.stock) &
                                                                                                   (pd.strike == prospect.strike) &
                                                                                                   (pd.expireDate == prospect.expireDate)).execute()
@@ -319,7 +319,7 @@ class rrPutSellStrategy:
                 r = rrIFTTT().send(report)
                 rrTelegram().sendMessage(
                     str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
-                if r == 200:
+                if str(r) == "<Response [200]>":
                     pass
             except Exception as e:
                 self.log.logger.error(
