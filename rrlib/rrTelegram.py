@@ -38,6 +38,7 @@ class rrTelegram:
         # Telegram API key & chat id for secure comms
         self.APIkey = config.get('telegram', 'api')
         self.chatid = config.get('telegram', 'chatid')
+        self.startBot = config.get('telegram', 'startbot')
         self.log.logger.debug("  rrTelegram module starting.  ")
         # starting bot
         # self.bot = telegram.bot(self.APIkey)
@@ -102,5 +103,5 @@ class rrTelegram:
         self.upd.start_polling()
 
     def sendMessage(self, message=""):
-        if self.APIkey != "":
+        if self.startBot != "No":
             self.upd.bot.send_message(self.chatid, text=message)

@@ -51,10 +51,12 @@ class logger(metaclass=Singleton):
         ch = logging.StreamHandler(sys.stdout)
         ch.setLevel(logging.INFO)
         # Create a Formatter for formatting the log messages
-        ft = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        ft = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
         # Add the Formatter to the Handler
         fh.setFormatter(ft)
-        cf = ColoredFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        cf = ColoredFormatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         ch.setFormatter(cf)
         if (self.logger.hasHandlers()):
             self.logger.handlers.clear()
@@ -87,7 +89,7 @@ class TqdmToLogger(io.StringIO):
 class ColoredFormatter(Formatter):
 
     def __init__(self, patern):
-        Formatter.__init__(self, patern)
+        Formatter.__init__(self, patern,  datefmt="%Y-%m-%d %H:%M:%S")
 
     def format(self, record):
 
