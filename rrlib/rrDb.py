@@ -203,7 +203,7 @@ class rrDbManager:
                     self.log.logger.debug(
                         "  DB Manager DONE Data retreived for "+stock.ticker)
                     if (self.verbose == "Yes"):
-                        tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                        tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
                                    + " - rrLog - "
                                    + "INFO -     DONE - Data retreived for " +
                                    stock.ticker+", strike: "+str(strike)
@@ -225,11 +225,6 @@ class rrDbManager:
         return True
 
     def getIntradayData(self):
-        # try:
-        #    db.connect()
-        # except Exception:
-        #    self.log.logger.warning(" DB already opened ")
-        #    return False
         from random import randint
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
         from rrlib.rrDataFetcher import StockDataFetcher as stckFetcher
@@ -264,7 +259,7 @@ class rrDbManager:
                         IntradayStockData.pctVol: dataFetcher.iloc[0]['%Volume'], IntradayStockData.timestamp: str(datetime.datetime.now()),
                         IntradayStockData.kpi: kpi}).execute()
                     if (self.verbose == "Yes"):
-                        tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                        tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
                                    + " - rrLog - " +
                                    "INFO -     DONE - Stock intraday "+stock.ticker +
                                    ", price:$"+str(dataFetcher.iloc[0]['price'])+", % price chng:" + str(pctChange) +
@@ -331,7 +326,6 @@ class rrDbManager:
     def getDatebyMonth(self, month):
         try:
             self.log.logger.debug("    Completing expiration date for "+str(month))
-            currentMonth = datetime.datetime.now().month
             retreiveDate = ExpirationDate.select().where(
                 ExpirationDate.id == int(month)).get().date
             completeDate = retreiveDate.strftime("%Y-%m-%d")
@@ -342,6 +336,7 @@ class rrDbManager:
             return False
         return completeDate
 
+    # getOptionData batch getter for stock option data
     def getOptionData(self):
         from rrlib.rrDataFetcher import OptionDataFetcher as optFetcher
         from random import randint
@@ -367,103 +362,24 @@ class rrDbManager:
                 stkdata = StockData.select().where(
                     StockData.stock == stock.ticker).order_by(StockData.id.desc()).get()
                 strike = int(stkdata.strike)
-                stockPrice = float(stkdata.price)
-                if(stkdata.earnDate == "-"):
-                    EdateMonth = "NA"
-                else:
-                    EdateMonth = list(calendar.month_abbr).index(stkdata.earnDate[:3])
                 mbar = tqdm(total=6, desc="Getting Month Data: ",
                             unit="Month", ascii=False, ncols=120, leave=False)
                 if(self.verbose == "Yes"):
-                    tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                    tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
                                + " - rrLog - INFO -   Retreving option data for "+stock.ticker)
                 while month < 9:
                     try:
                         # get strike info from stock data
                         self.log.logger.debug("  DB Manager Attempting to retreive data for option " +
                                               stock.ticker+" month "+str(month)+" at strike:"+str(strike))
-                        dataFetcher = optFetcher(stock.ticker).getData(month, strike)
-                        self.log.logger.debug(dataFetcher)
-                        if len(dataFetcher.index) > 0:
-                            self.log.logger.debug(
-                                "  DB Manager Data retreived for option "+stock.ticker+" month "+str(month))
-                            # calculate option data pricing and kpi's
-                            # rpotential
-                            # calculate number of contracts, use price if its within bid-ask otherwise use midpoint
-                            price = float(dataFetcher.iloc[10]['value'])
-                            bid = float(dataFetcher.iloc[2]['value'])
-                            ask = float(dataFetcher.iloc[3]['value'])
-                            # set price mid ask bid if price below bid or price above ask and bid ask above 0
-                            if (bid > 0 and ask > 0) and (price < bid or price > ask):
-                                price = (bid + ask)/2
-                            if price > 0:
-                                # with R = 100 then price must be > $6.6, R200=$13.3, R300=20
-                                contracts = round(2*R/(50*price))
-                            else:
-                                contracts = 0
-                            # calculate worst case on stock ownership
-                            stockOwnership = contracts*strike*100-price*100
-                            # calculate BP withheld to match
-                            withheldBP = max(100*contracts*(0.25*stockPrice+price *
-                                                            (stockPrice-strike)), 100*contracts*(price+0.1*stockPrice))
-                            # calculate R potential from selling
-                            Rpotential = 100*contracts*price/R/2
-                            # calculate expected premium
-                            expectedPremium = stockPrice*month*monthlyPremium
-                            # kpi checks for month of earnings, number of contracts, r potential, reduce for buying power
-                            kpi = 0.5 if price > expectedPremium else 0  # pricing premium
-                            if contracts < 10:  # contract numbers
-                                kpi = kpi+0.1
-                            elif 10 < contracts < 20:
-                                kpi = kpi+0.05
-                            kpi = kpi+Rpotential*0.05  # r potential
-                            # reduce kpi based on stock ownership vs buying power
-                            kpi = kpi-0.1*(stockOwnership/BP)
-                            if (EdateMonth != "NA"):
-                                if (EdateMonth % 3 == (datetime.datetime.now().month+month) % 3):
-                                    kpi = 0
-                            row = {'stock': stock.ticker, 'strike': str(strike), 'price': round(price, 3),
-                                   'expireDate': datetime.datetime.strptime(dataFetcher.iloc[5]['value'], '%Y-%m-%d'),
-                                   'openPrice': dataFetcher.iloc[1]['value'],
-                                   "bid": str(bid), "ask": str(ask),
-                                   "dayRange": dataFetcher.iloc[6]['value'], "volume": dataFetcher.iloc[8]['value'],
-                                   "openInterest": dataFetcher.iloc[9]['value'], 'timestamp': datetime.datetime.now(),
-                                   'contracts': str(contracts), 'stockOwnership': str(round(stockOwnership, 3)),
-                                   'withheldBP': str(round(withheldBP, 3)),
-                                   'Rpotential': str(round(Rpotential, 3)), 'kpi': str(round(kpi, 3)),
-                                   'expectedPremium': str(round(expectedPremium, 3))}
-                            self.log.logger.debug(
-                                "  DB Manager Built row: strike="+str(strike)+" row:"+str(row))
-                            OptionData.insert(row).on_conflict(conflict_target=[OptionData.stock, OptionData.expireDate, OptionData.strike],
-                                                               update={OptionData.price: round(price, 3),
-                                                                       OptionData.openPrice: dataFetcher.iloc[1]['value'],
-                                                                       OptionData.bid: dataFetcher.iloc[2]['value'],
-                                                                       OptionData.ask: dataFetcher.iloc[3]['value'],
-                                                                       OptionData.dayRange: dataFetcher.iloc[6]['value'],
-                                                                       OptionData.volume: dataFetcher.iloc[8]['value'],
-                                                                       OptionData.openInterest: dataFetcher.iloc[9]['value'],
-                                                                       OptionData.timestamp: datetime.datetime.now(),
-                                                                       OptionData.contracts: str(contracts),
-                                                                       OptionData.stockOwnership: str(round(stockOwnership, 3)),
-                                                                       OptionData.withheldBP: str(round(withheldBP, 3)),
-                                                                       OptionData.Rpotential: str(round(Rpotential, 3)),
-                                                                       OptionData.kpi: str(round(kpi, 3)),
-                                                                       OptionData.expectedPremium: str(round(expectedPremium, 3))}).execute()
-                            if (self.verbose == "Yes"):
-                                tqdm.write(str(datetime.datetime.now().strftime(
-                                    '%Y-%m-%d %H:%M:%S.%f')[:-3])
-                                    + " - rrLog - INFO -     DONE - Option data loaded for "+stock.ticker
-                                    + ", strike:$"+str(strike)+", for month "+str(month))
-                            self.log.logger.debug("    DONE - Option data loaded: " +
-                                                  stock.ticker+" for month "+str(month))
-                        else:
-                            self.log.logger.debug(
-                                "    NOT FOUND - No Option for this month")
-                            if (self.verbose == "Yes"):
-                                tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
-                                           + " - rrLog - INFO -     NOT FOUND - No option for "+stock.ticker+", strike:$"+str(strike) +
-                                           ", for month "+str(month))
-
+                        self.getOption(stock.ticker, strike, month)
+                        """if (self.verbose == "Yes"):
+                            tqdm.write(str(datetime.datetime.now().strftime(
+                                '%Y-%m-%d %H:%M:%S'))
+                                + " - rrLog - INFO -     DONE - Option data loaded for "+stock.ticker
+                                + ", strike:$"+str(strike)+", for month "+str(month))"""
+                        self.log.logger.debug("    DONE - Option data loaded: " +
+                                              stock.ticker+" for month "+str(month))
                         month = month+1
                         mbar.update(1)
                     except Exception as e:
@@ -482,6 +398,109 @@ class rrDbManager:
                 "  DB Manager Error failed to fetch data.  Please check internet connectivity or yahoo.com for availability.  Using cached verssion.")
             return False
         return True
+
+    # getOption single getter for stock option data
+    def getOption(self, stock, strike, month):
+        from rrlib.rrDataFetcher import OptionDataFetcher as optFetcher
+        import calendar
+        # startup
+        self.log.logger.debug("  DB Manager Get Option data.  ")
+        # create table if not created
+        OptionData.create_table()
+        # R value from portfolio
+        R = float(self.portfolio.R)
+        # minpremium from portfolio
+        monthlyPremium = float(self.portfolio.monthlyPremium)
+        # BP from portfolio
+        BP = float(self.portfolio.BP)
+        stkdata = StockData.select().where(
+            StockData.stock == stock).order_by(StockData.id.desc()).get()
+        stockPrice = float(stkdata.price)
+        if(stkdata.earnDate == "-"):
+            EdateMonth = "NA"
+        else:
+            EdateMonth = list(calendar.month_abbr).index(stkdata.earnDate[:3])
+        if(self.verbose == "Yes"):
+            self.log.logger.debug("   Retreving option data for "+stock +
+                                  ", month "+str(month)+", strike: $"+str(strike))
+        try:
+            dataFetcher = optFetcher(stock).getData(month, strike)
+            self.log.logger.debug(dataFetcher)
+            if len(dataFetcher.index) > 0:
+                # calculate number of contracts, use price if its within bid-ask otherwise use midpoint
+                price = float(dataFetcher.iloc[10]['value'])
+                bid = float(dataFetcher.iloc[2]['value'])
+                ask = float(dataFetcher.iloc[3]['value'])
+                # set price mid ask bid if price below bid or price above ask and bid ask above 0
+                if (bid > 0 and ask > 0) and (price < bid or price > ask):
+                    price = (bid + ask)/2
+                if price > 0:
+                    # with R = 100 then price must be > $6.6, R200=$13.3, R300=20
+                    contracts = round(2*R/(50*price))
+                else:
+                    contracts = 0
+                # calculate worst case on stock ownership
+                stockOwnership = contracts*strike*100-price*100
+                # calculate BP withheld to match
+                withheldBP = max(100*contracts*(0.25*stockPrice+price *
+                                                (stockPrice-strike)), 100*contracts*(price+0.1*stockPrice))
+                # calculate R potential from selling
+                Rpotential = 100*contracts*price/R/2
+                # calculate expected premium
+                expectedPremium = stockPrice*month*monthlyPremium
+                # kpi checks for month of earnings, number of contracts, r potential, reduce for buying power
+                kpi = 0.5 if price > expectedPremium else 0  # pricing premium
+                if contracts < 10:  # contract numbers
+                    kpi = kpi+0.1
+                elif 10 < contracts < 20:
+                    kpi = kpi+0.05
+                kpi = kpi+Rpotential*0.05  # r potential
+                # reduce kpi based on stock ownership vs buying power
+                kpi = kpi-0.1*(stockOwnership/BP)
+                if (EdateMonth != "NA"):
+                    if (EdateMonth % 3 == (datetime.datetime.now().month+month) % 3):
+                        kpi = 0
+                row = {'stock': stock, 'strike': str(strike), 'price': round(price, 3),
+                       'expireDate': datetime.datetime.strptime(dataFetcher.iloc[5]['value'], '%Y-%m-%d'),
+                       'openPrice': dataFetcher.iloc[1]['value'],
+                       "bid": str(bid), "ask": str(ask),
+                       "dayRange": dataFetcher.iloc[6]['value'], "volume": dataFetcher.iloc[8]['value'],
+                       "openInterest": dataFetcher.iloc[9]['value'], 'timestamp': datetime.datetime.now(),
+                       'contracts': str(contracts), 'stockOwnership': str(round(stockOwnership, 3)),
+                       'withheldBP': str(round(withheldBP, 3)),
+                       'Rpotential': str(round(Rpotential, 3)), 'kpi': str(round(kpi, 3)),
+                       'expectedPremium': str(round(expectedPremium, 3))}
+                self.log.logger.debug(
+                    "  DB Manager Built row: strike="+str(strike)+" row:"+str(row))
+                OptionData.insert(row).on_conflict(conflict_target=[OptionData.stock, OptionData.expireDate, OptionData.strike],
+                                                   update={OptionData.price: round(price, 3),
+                                                           OptionData.openPrice: dataFetcher.iloc[1]['value'],
+                                                           OptionData.bid: dataFetcher.iloc[2]['value'],
+                                                           OptionData.ask: dataFetcher.iloc[3]['value'],
+                                                           OptionData.dayRange: dataFetcher.iloc[6]['value'],
+                                                           OptionData.volume: dataFetcher.iloc[8]['value'],
+                                                           OptionData.openInterest: dataFetcher.iloc[9]['value'],
+                                                           OptionData.timestamp: datetime.datetime.now(),
+                                                           OptionData.contracts: str(contracts),
+                                                           OptionData.stockOwnership: str(round(stockOwnership, 3)),
+                                                           OptionData.withheldBP: str(round(withheldBP, 3)),
+                                                           OptionData.Rpotential: str(round(Rpotential, 3)),
+                                                           OptionData.kpi: str(round(kpi, 3)),
+                                                           OptionData.expectedPremium: str(round(expectedPremium, 3))}).execute()
+                if (self.verbose == "Yes"):
+                    tqdm.write(str(datetime.datetime.now().strftime(
+                        '%Y-%m-%d %H:%M:%S'))
+                        + " - rrLog - INFO -     DONE - Option data loaded for "+stock
+                        + ", strike:$"+str(strike)+", for month "+str(month))
+            else:
+                if (self.verbose == "Yes"):
+                    tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                               + " - rrLog - INFO -     NOT FOUND - No option for "+stock+", strike:$"+str(strike) +
+                               ", for month "+str(month))
+        except Exception as e:
+            self.log.logger.warning(
+                "  DB Manager Error failed to fetch data.  Possibly no Stock Data loaded. Or several process running at the same time")
+            self.log.logger.warning(e)
 
     def saveProspect(self, stock, strike, expireDate, price, contracts, stockOwnership,
                      rPotential, kpi, color):

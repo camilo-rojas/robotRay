@@ -120,7 +120,7 @@ class rrPutSellStrategy:
                                                  higherOptionData.stockOwnership, higherOptionData.Rpotential,
                                                  kpi=higherOptionData.kpi, color="green")
                     except OptionData.DoesNotExist:
-                        tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                        tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
                                    + " - rrLog - " +
                                    "INFO -       Green Potential day decline, but no option data for: "+stock.stock +
                                    " with strike:"+strike + ", in the last 4 days")
@@ -146,7 +146,7 @@ class rrPutSellStrategy:
                                                  higherOptionData.stockOwnership, higherOptionData.Rpotential,
                                                  kpi=higherOptionData.kpi, color="yellow")
                     except OptionData.DoesNotExist:
-                        tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
+                        tqdm.write(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
                                    + " - rrLog - " +
                                    "INFO -        Yellow Potential day decline, but no option data for: "+stock.stock +
                                    " with strike:"+strike + ", in the last 4 days")
@@ -249,12 +249,29 @@ class rrPutSellStrategy:
                 "     Put Sell Strategy communicator closing error")
             self.log.logger.error(e)
 
+    def diff_month(self, start_date, end_date):
+        qty_month = ((end_date.year - start_date.year) * 12) + (end_date.month - start_date.month)
+        d_days = end_date.day - start_date.day
+        if d_days >= 0:
+            adjust = 0
+        else:
+            adjust = -1
+        qty_month += adjust
+        return qty_month
+
     def updatePricingProspects(self):
         from rrlib.rrDb import ProspectData as pd
         from rrlib.rrDb import OptionData as od
+
         try:
             for pt in pd.select().where(pd.BTCcomm.is_null()):
                 self.log.logger.debug("    Put Sell Strategy updating prices for: " + str(pt))
+                timestamp = od.select(od.timestamp).where((od.stock == pt.stock) & (
+                    od.strike == pt.strike) & (od.expireDate == pt.expireDate)).get().timestamp
+                # TODO if timestamp > 1 dia entonces actualizar manualmente la opción y recargar
+                if ((datetime.datetime.now()-datetime.timedelta(days=1)) > timestamp):
+                    monthdif = int(self.diff_month(datetime.datetime.today(), pt.expireDate))
+                    self.db.getOption(pt.stock, int(pt.strike), monthdif)
                 currentPrice = od.select(od.price).where((od.stock == pt.stock) & (
                     od.strike == pt.strike) & (od.expireDate == pt.expireDate)).get().price
                 pnl = str(round(float(pt.contracts) *

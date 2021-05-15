@@ -98,7 +98,7 @@ class OptionDataFetcher():
             df = odfp(self.symbol).getData(month, strike)
             self.log.logger.debug("   Values loaded: \n"+str(df))
         elif(self.source == "ib"):
-            self.log.logger.debug("   Loading intraday from IB")
+            self.log.logger.debug("   Loading option data from IB")
             # implement class for ib retreival
             df = pd.DataFrame()
         else:
@@ -113,7 +113,7 @@ class OptionDataFetcher():
             df = odfp(self.symbol).getStrikes()
             self.log.logger.debug("   Values loaded: \n"+str(df))
         elif(self.source == "ib"):
-            self.log.logger.debug("   Loading intraday from IB")
+            self.log.logger.debug("   Loading strikes from IB")
             # implement class for ib retreival
             df = pd.DataFrame()
         else:
@@ -128,7 +128,7 @@ class OptionDataFetcher():
             df = odfp(self.symbol).getExpirations()
             self.log.logger.debug("   Values loaded: \n"+str(df))
         elif(self.source == "ib"):
-            self.log.logger.debug("   Loading intraday from IB")
+            self.log.logger.debug("   Loading expirations from IB")
             # implement class for ib retreival
             df = pd.DataFrame()
         else:
