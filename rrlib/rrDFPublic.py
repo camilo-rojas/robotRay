@@ -98,7 +98,7 @@ class OptionDFPublic():
         month = int(month)
         df = pd.DataFrame(columns=['key', 'value'])
         i = 0
-        if (3 <= month <= 8):
+        if (0 <= month <= 8):
             try:
                 putURL = OptionManager.getPutFormater(
                     self.symbol, month, strike)

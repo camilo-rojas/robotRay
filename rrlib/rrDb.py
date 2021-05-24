@@ -338,20 +338,11 @@ class rrDbManager:
 
     # getOptionData batch getter for stock option data
     def getOptionData(self):
-        from rrlib.rrDataFetcher import OptionDataFetcher as optFetcher
         from random import randint
-        import calendar
         # startup
         self.log.logger.info("  DB Manager Get Option data.  ")
         # create table if not created
         OptionData.create_table()
-        # R value from portfolio
-        R = float(self.portfolio.R)
-        # minpremium from portfolio
-        monthlyPremium = float(self.portfolio.monthlyPremium)
-        # BP from portfolio
-        BP = float(self.portfolio.BP)
-
         try:
             for stock in tqdm(Stock.select(), desc="Getting Option Data", unit="Stock", ascii=False, ncols=120, leave=False):
                 # for stock in Stock.select().where(Stock.ticker == "COIN"):

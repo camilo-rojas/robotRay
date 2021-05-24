@@ -67,6 +67,8 @@ class rrPutSellStrategy:
         self.IntradayKPIRed = config['sellputstrategy']['IntradayKPIRed']
         # Get number of days to BTC on Options
         self.BTCdays = config['sellputstrategy']['BTCdays']
+        # Target of premium collected before closing
+        self.PremiumTarget = config['sellputstrategy']['PremiumTarget']
         # Get option expected price flexiblity to ask limit
         self.ExpPrice2Ask = config['sellputstrategy']['ExpPrice2Ask']
         # is telegram bot enabled for commands
@@ -193,7 +195,6 @@ class rrPutSellStrategy:
                     r = rrIFTTT().send(report)
                     rrTelegram().sendMessage(
                         str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
-                    print("Enviado por IFTT:"+str(r))
                     if str(r) == "<Response [200]>":
                         pd.update({pd.STOcomm: datetime.datetime.today()}).where((pd.stock == prospect.stock) & (
                             pd.strike == prospect.strike) & (pd.expireDate == prospect.expireDate)).execute()
@@ -214,7 +215,7 @@ class rrPutSellStrategy:
         from rrlib.rrDb import ProspectData as pd
         try:
             for prospect in pd.select().where(pd.BTCcomm.is_null()):
-                if ((float(prospect.price)/2 > float(prospect.currentPrice)) or
+                if ((float(prospect.price)*float(self.PremiumTarget) > float(prospect.currentPrice)) or
                         (float((prospect.expireDate-datetime.date.today()).days) < float(self.BTCdays))):
                     pnl = str(round(float(prospect.contracts) *
                                     (float(prospect.price)-float(prospect.currentPrice))*100-float(prospect.contracts)*2, 2))
@@ -251,12 +252,6 @@ class rrPutSellStrategy:
 
     def diff_month(self, start_date, end_date):
         qty_month = ((end_date.year - start_date.year) * 12) + (end_date.month - start_date.month)
-        d_days = end_date.day - start_date.day
-        if d_days >= 0:
-            adjust = 0
-        else:
-            adjust = -1
-        qty_month += adjust
         return qty_month
 
     def updatePricingProspects(self):

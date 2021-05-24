@@ -135,7 +135,6 @@ class rrDailyScan:
 
     def communicateScan(self):
         import datetime
-        import requests
         from rrlib.rrTelegram import rrTelegram
         from rrlib.rrIFTTT import rrIFTTT
 
@@ -148,6 +147,12 @@ class rrDailyScan:
                     self.log.logger.info("      event: " + event['date'].strftime("%d/%m")+", Pattern: "+str(event['pattern']) +
                                          ", signal: " +
                                          str(event['signal']) + ", ROI "+str(event['roi'])+", success rate " + str(event['successrate'])+". "+str(event['impact']))
+                    if(datetime.datetime.now().isoweekday() == 1):
+                        daydelta = 4
+                    elif datetime.datetime.now().isoweekday() == 7:
+                        daydelta = 3
+                    else:
+                        daydelta = 2
                     if float(event['roi']) > 0.1 and float(event['successrate']) > 0.2 and (datetime.datetime.now()-datetime.timedelta(days=3)) < event['date']:
                         self.db.updateServerRun(prospectsFound="Yes")
                         report = {}
@@ -155,14 +160,14 @@ class rrDailyScan:
                             event['date'].strftime("%d/%m")+" Pattern:" + str(event['pattern'])
                         report["value2"] = "Signal:" + str(event['signal'])+" Entry:" + \
                             "" + ", Stop Loss:"+""+", Take Profit:"+""
-                        report["value3"] = "ROI:" +\
-                            str(event['roi'])+", Success Rate:" + \
-                            str(event['successrate'])+", Impact:"+str(event['impact'])
+                        report["value3"] = "ROI:" + str(event['roi'])+", Success Rate:" + str(
+                            event['successrate'])+", Impact:"+str(event['impact'])
                         try:
-                            rrIFTTT().send(report)
-                            rrTelegram().sendMessage(
-                                str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
-
+                            if(float(event['roi']) > 0.2) and (datetime.datetime.now()-datetime.timedelta(days=daydelta)) < event['date']:
+                                rrIFTTT().send(report)
+                                rrTelegram().sendMessage(
+                                    str(report["value1"])+" | "+str(report["value2"])+" | "+str(report["value3"]))
+                                rrTelegram().sendImage("https://charts2.finviz.com/chart.ashx?t="+stk+"&ty=c&ta=1&p=d&s=l")
                         except Exception as e:
                             self.log.logger.error(
                                 "     Daily scan communications error")

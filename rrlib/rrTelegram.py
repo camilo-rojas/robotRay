@@ -105,3 +105,7 @@ class rrTelegram:
     def sendMessage(self, message=""):
         if self.startBot != "No":
             self.upd.bot.send_message(self.chatid, text=message)
+
+    def sendImage(self, url=""):
+        if self.startBot != "No":
+            self.upd.bot.send_photo(self.chatid, url)

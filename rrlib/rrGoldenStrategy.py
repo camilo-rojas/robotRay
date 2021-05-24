@@ -66,13 +66,15 @@ class rrGoldenStrategy:
 
                     # look for golden or death and raise communication
                     if sma200now > sma50now and sma200old < sma50old:
+                        m200 = ("SMA200 was "+str(sma200old)+", and now is "+str(sma200now))
+                        m50 = ("SMA50 was "+str(sma50old)+", and now is "+str(sma50now))
                         self.log.logger.info(
-                            "  Golden Strategy found a DEATH CROSS in:"+stock.stock)
+                            "  Golden Strategy found a DEATH CROSS "+trend+" in:"+stock.stock)
                         self.communicateProspects(stock.stock, "Death Cross")
                     elif sma200now < sma50now and sma200old > sma50old:
                         self.log.logger.info(
-                            "  Golden Strategy found a GOLDEN CROSS in:"+stock.stock)
-                        self.communicateProspects(stock.stock, "Golden Cross")
+                            "  Golden Strategy found a GOLDEN CROSS "+trend + " in:"+stock.stock)
+                        self.communicateProspects(stock.stock, "Golden Cross "+m200+", "+m50)
                     self.log.logger.debug("Stock:"+stock.stock+", is "+trend+", 50:"+str(sma50[0])+", "+str(sma50[position]) + ", 200:" + str(
                         sma200[0])+", "+str(sma200[position])+"; time:"+str(times[0])+", "+str(times[position]))
                 except Exception:
