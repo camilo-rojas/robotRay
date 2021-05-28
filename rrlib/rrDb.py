@@ -345,7 +345,6 @@ class rrDbManager:
         OptionData.create_table()
         try:
             for stock in tqdm(Stock.select(), desc="Getting Option Data", unit="Stock", ascii=False, ncols=120, leave=False):
-                # for stock in Stock.select().where(Stock.ticker == "COIN"):
                 month = 3
                 time.sleep(randint(2, 5))
                 self.log.logger.debug(stock.ticker+" "+str(month))

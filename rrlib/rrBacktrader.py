@@ -59,14 +59,7 @@ class rrBacktrader:
 
     def btGolden(self):
         from rrlib.rrGoldenBt import rrGoldenBt
-        stocks = self.db.getStocks()
-        # for index, stock in tqdm(stocks.iterrows(), desc="  Getting Historic Data", unit="Stock", ascii=False, ncols=120, leave=False):
-        for index, stock in stocks.iterrows():
-            try:
-                rrGoldenBt(stock['ticker']).run()
-            except Exception as e:
-                self.log.logger.warning("Problem backtrading Golden strategy.")
-                self.log.logger.warning(e)
+        rrGoldenBt().run()
 
     def getHistoricData(self, stock):
         df = pd.DataFrame(historicData.select().where(historicData.stock == stock).dicts())

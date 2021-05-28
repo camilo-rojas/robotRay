@@ -138,53 +138,44 @@ class rrController():
                     response.append("shutdown")
             elif(command == "help"):
                 response.append("")
-                response.append(
-                    "================================================================")
+                response.append("=" * 64)
                 response.append(
                     "RobotRay Help Menu - commands and manual override options")
-                response.append(
-                    "================================================================")
+                response.append("=" * 64)
                 response.append("")
                 response.append(
                     " General Commands: help, clear, status, source, jobs,")
                 response.append(
                     "   isdbinuse, quit, exit, intro, about")
-                response.append(
-                    "----------------------------------------------------------------")
+                response.append("-" * 64)
                 response.append(
                     " The following are scheduled automatically, run only for override")
                 response.append(
                     " Stock Data refresh manual commands: getstockdata, getintradaydata")
                 response.append(
                     " Option Data refresh manual commands: getoptiondata")
-                response.append(
-                    "----------------------------------------------------------------")
+                response.append("-" * 64)
                 response.append(" Portfolio commands (TBD): switchsource, ")
                 response.append("   getPositions, getAccount, getBuyingPower ")
                 response.append("   getAvailableFunds, getCash, getUnrPNL, getRPNL ")
                 response.append("   getTrades, getOpenTrades, getOpenOrders, getOrders ")
-                response.append(
-                    "----------------------------------------------------------------")
+                response.append("-" * 64)
                 response.append(
                     " Stock Data info commands: printstocks, printintra")
                 response.append(" Option Data info commands: printoptions")
                 response.append(
                     " Run prospect info: printallp, printopenp, printclosedp, sendp")
-                response.append(
-                    "----------------------------------------------------------------")
+                response.append("-" * 64)
                 response.append(" Strategies: sellputs, golden")
                 response.append(" Backtrader: btdownload, btsellputs, btgolden")
-                response.append(
-                    "----------------------------------------------------------------")
+                response.append("-" * 64)
                 response.append(" Daily scanner override: dailyscan")
-                response.append(
-                    "----------------------------------------------------------------")
+                response.append("-" * 64)
                 response.append(
                     " Statistics for bot operations (TBD): report, reporty, ")
                 response.append(
                     "    reportytd, reportsm, reportw")
-                response.append(
-                    "================================================================")
+                response.append("=" * 64)
             elif(command == "clear"):
                 response.append("")
                 if sys.platform == 'win32':

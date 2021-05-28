@@ -35,8 +35,7 @@ class server():
 
     def intro(self):
         self.log.logger.info("")
-        self.log.logger.info(
-            "-----------------------------------------------------------------")
+        self.log.logger.info("-"*64)
         self.log.logger.info("    ____          __            __   ____               ")
         self.log.logger.info("   / __ \ ____   / /_   ____   / /_ / __ \ ____ _ __  __")
         self.log.logger.info("  / /_/ // __ \ / __ \ / __ \ / __// /_/ // __ `// / / /")
@@ -46,8 +45,7 @@ class server():
         self.log.logger.info("robotRay v1.0 - by Camilo Rojas - Jun 8 2019")
         self.log.logger.info(
             "Copyright Camilo Rojas - camilo.rojas@gmail.com")
-        self.log.logger.info(
-            "-----------------------------------------------------------------  ")
+        self.log.logger.info("-"*64)
         self.log.logger.info("")
 
     def startup(self):
@@ -89,6 +87,12 @@ class server():
         self.log.logger.info("06. Starting strategies")
         self.sellp = rrPutSellStrategy()
         self.log.logger.info("06. DONE - Starting strategies")
+        self.faststart = config.get('debug', 'faststart')
+        if(self.faststart == "No"):
+            self.log.logger.info("10. Initial Stock Data and Intraday fetch")
+            self.db.getStockData()
+            self.db.getIntradayData()
+            self.log.logger.info("10. DONE - Initial Stock Data and Intraday fetch")
         self.log.logger.info(
             "-- Finished Startup robotRay server. Starting schedule.")
         self.log.logger.info("")
