@@ -104,9 +104,12 @@ class OptionDFPublic():
                     self.symbol, month, strike)
                 # print(putURL)
                 url = "http://finance.yahoo.com/quote/"+putURL+"?p="+putURL
-                self.log.logger.info("    URL \n"+str(url))
-                sauce = urllib.request.urlopen(
-                    url, timeout=self.timeout).read()
+                self.log.logger.debug("    URL \n"+str(url))
+                req = urllib.request.Request(url)
+                req.add_header(
+                    "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"
+                )
+                sauce = urllib.request.urlopen(req, timeout=self.timeout).read()
             except HTTPError as e:
                 if e.code == 404:
                     soup = bs(e.fp.read())

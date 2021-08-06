@@ -7,6 +7,7 @@ from pprint import pprint
 from bs4 import BeautifulSoup as bs
 import urllib
 from urllib.error import URLError, HTTPError
+import yfinance as yf
 
 
 if True:
@@ -20,6 +21,12 @@ if True:
     from rrlib.rrDailyScan import rrDailyScan as ds
     from rrlib.rrBacktrader import rrBacktrader as bt
 
+    nflx = yf.Ticker("NFLX")
+    opt = nflx.option_chain('2021-11-19')
+    pprint(opt.puts.strike)
+
+
+"""
     try:
         sauce = urllib.request.urlopen(
             "https://finance.yahoo.com/quote/NFLX211119P00390000", timeout=10).read()
@@ -36,7 +43,7 @@ if True:
         soup = bs(sauce, 'html.parser')
         pprint(soup.prettify())
 
-"""
+
 pd.set_option('display.max_columns', None)
 ds().dailyScan()
 
