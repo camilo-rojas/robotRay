@@ -16,6 +16,21 @@ import math
 import datetime
 
 
+class FixedCommisionScheme(bt.CommInfoBase):
+    '''
+    IB Simple commision scheme 2 usd per trade
+    '''
+    params = (
+        ('commission', 2),
+        ('stocklike', True),
+        ('commtype', bt.CommInfoBase.COMM_FIXED),
+
+    )
+
+    def _getcommission(self, size, price, pseudoexec):
+        return self.p.commission
+
+
 class rrGoldenBt:
     def __init__(self):
         # Starting common services
@@ -36,9 +51,20 @@ class rrGoldenBt:
         config = configparser.ConfigParser()
         config.read("rrlib/robotRay.ini")
         # max investment in % terms of porfolio
+        # deprecating margin relates to R not maxinv
         self.maxinv = config.get('backtrader', 'maxinv')
-        self.timeframe = config.get('backtrader', 'timeframe')
         self.commission = float(config.get('backtrader', 'commission'))
+        self.marginRequirement = float(config.get('backtrader', 'marginreq'))
+        self.stoplossdistance = float(config.get('backtrader', 'stoploss'))
+        # for now use IB like commisions
+        self.COMMINFO_DEFAULT = dict(
+            stocklike=False,  # Futures-like
+            commtype=bt.CommissionInfo.COMM_FIXED,  # fixed price per asset
+            commission=2.0,  # Standard IB Price for futures
+            # mult=1000.0,  # multiplier default 1
+            margin=float(self.portfolio.R)/(1-(1-self.stoplossdistance)) * \
+            self.marginRequirement  # IB avg 27% del costo de la trx en acciones
+        )
         # Generate Cerebro
         self.cerebro = bt.Cerebro()
         self.cerebro.broker.setcash(float(self.portfolio.funds))
@@ -60,13 +86,18 @@ class rrGoldenBt:
                 self.log.logger.warning(e)
 
         # load strategy for backtesting
-        self.cerebro.addstrategy(GoldenStrategy, maxinv=self.maxinv)
+        self.cerebro.addstrategy(GoldenStrategy)
         # start balance for performance testing
         self.initialbalance = self.cerebro.broker.getvalue()
         # set commision statement
-        self.cerebro.broker.setcommission(self.commission)
+        # self.cerebro.broker.setcommission(**self.COMMINFO_DEFAULT)
+        # new fixed 2 dolar commission similar to IB
+        comminfo = FixedCommisionScheme(margin=float(self.portfolio.R)/(1-(1-self.stoplossdistance)) *
+                                        self.marginRequirement)
+        self.cerebro.broker.addcommissioninfo(comminfo)
         # Add a FixedSize sizer according to the stake
-        self.cerebro.addsizer(bt.sizers.FixedSize, stake=10)
+        # Sizing being done at the strategy class
+        # self.cerebro.addsizer(PercentRiskSizer)
         # Add analyzers
         self.cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='mysharpe', riskfreerate=0.1)
         self.cerebro.addanalyzer(bt.analyzers.DrawDown, _name="myDrawDown")
@@ -106,27 +137,30 @@ class rrGoldenBt:
         figure.savefig("rrlib/btreports/golden/" +
                        datetime.datetime.now().strftime("%y-%m-%d")+'.png')
         msg = ("\n\n*** PnL: ***\n"
-               "Start capital         : {start_cash:4.2f}\n"
-               "Final balance         : {final_balance:4.2f}\n"
-               "Total rlzd net profit : {rpl:4.2f}\n"
-               "Result winning trades : {result_won_trades:4.2f}\n"
-               "Result lost trades    : {result_lost_trades:4.2f}\n"
-               "Profit factor         : {profit_factor:4.2f}\n"
-               "Total return          : {total_return:4.2f}%\n"
-               "Annual return         : {annual_return:4.2f}%\n"
+               "Start capital         : ${start_cash:,.2f}\n"
+               "Final balance         : ${final_balance:,.2f}\n"
+               "Total net profit      : ${np:,.2f}\n"
+               "Total realized profit : ${rpl:,.2f}\n"
+               "Total unrlzd profit   : ${urpl:,.2f}\n"
+               "Result winning trades : ${result_won_trades:,.2f}\n"
+               "Result lost trades    : ${result_lost_trades:,.2f}\n"
+               "Profit factor         : {profit_factor:,.2f}\n"
+               "Total return          : {total_return:,.2f}%\n"
+               "Annual return         : {annual_return:,.2f}%\n"
                "Annualized returns    : {ar}\n"
-               "Max. money drawdown   : {max_money_drawdown:4.2f}\n"
-               "Max. percent drawdown : {max_pct_drawdown:4.2f}%\n\n"
+               "Max. money drawdown   : ${max_money_drawdown:,.2f}\n"
+               "Max. percent drawdown : {max_pct_drawdown:,.2f}%\n"
+               "Total commissions     : ${commissions:,.2f}\n\n"
                "*** Trades ***\n"
                "Number of trades      : {total_number_trades:d}\n"
                "    # Open trades     : {open_trades:d}\n"
                "    # Closed trades   : {trades_closed:d}\n"
                "    %winning          : {pct_winning:4.2f}%\n"
                "    %losing           : {pct_losing:4.2f}%\n"
-               "    avg money winning : {avg_money_winning:4.2f}\n"
-               "    avg money losing  : {avg_money_losing:4.2f}\n"
-               "    best winning trade: {best_winning_trade:4.2f}\n"
-               "    worst losing trade: {worst_losing_trade:4.2f}\n\n"
+               "    avg money winning : ${avg_money_winning:,.2f}\n"
+               "    avg money losing  : ${avg_money_losing:,.2f}\n"
+               "    best winning trade: ${best_winning_trade:,.2f}\n"
+               "    worst losing trade: ${worst_losing_trade:,.2f}\n\n"
                "*** Performance ***\n"
                "Sharpe ratio          : {sharpe_ratio:4.2f}\n"
                "SQN score             : {sqn_score:4.2f}\n"
@@ -143,11 +177,6 @@ class rrGoldenBt:
         """
         st = self.strategy
         dt = st.data._dataname['open'].index
-        trade_analysis = st.analyzers.myTradeAnalysis.get_analysis()
-        rpl = trade_analysis.pnl.net.total
-        total_return = rpl / self.initialbalance
-        total_number_trades = trade_analysis.total.total
-        trades_closed = trade_analysis.total.closed
         bt_period = dt[-1] - dt[0]
         bt_period_days = bt_period.days
         drawdown = st.analyzers.myDrawDown.get_analysis()
@@ -155,11 +184,55 @@ class rrGoldenBt:
         sqn_score = st.analyzers.mySqn.get_analysis()['sqn']
         ar = ''
         for key, value in st.analyzers.myar.get_analysis().items():
-            ar = ar+str(key)+"="+str(round(value*100, 2))+"%, "
+            ar = ar+str(key)+":"+str(round(value*100, 2))+"%, "
+
+        try:
+            trade_analysis = st.analyzers.myTradeAnalysis.get_analysis()
+            rpl = trade_analysis.pnl.net.total
+            total_return = rpl / self.initialbalance
+            total_number_trades = trade_analysis.total.total
+            trades_closed = trade_analysis.total.closed
+        except Exception:
+            self.log.logger.info("    No trades in this model")
+            kpi = {  # PnL
+                'start_cash': self.initialbalance,
+                'final_balance': self.finalbalance,
+                'np': (self.finalbalance-self.initialbalance),
+                'rpl': 0,
+                'urpl': 0,
+                'result_won_trades': 0,
+                'result_lost_trades': 0,
+                'profit_factor': 0,
+                'rpl_per_trade': 0,
+                'total_return': 0,
+                'annual_return': 0,
+                'ar': ar,
+                'max_money_drawdown': drawdown['max']['moneydown'],
+                'max_pct_drawdown': drawdown['max']['drawdown'],
+                'commissions': 0,
+                # trades
+                'total_number_trades': 0,
+                'open_trades': 0,
+                'trades_closed': 0,
+                'pct_winning': 0,
+                'pct_losing': 0,
+                'avg_money_winning': 0,
+                'avg_money_losing':  0,
+                'best_winning_trade': 0,
+                'worst_losing_trade': 0,
+                #  performance
+                'sharpe_ratio': sharpe_ratio,
+                'sqn_score': sqn_score,
+                'sqn_human': self._sqn2rating(sqn_score)
+            }
+            return kpi
+
         kpi = {  # PnL
             'start_cash': self.initialbalance,
             'final_balance': self.finalbalance,
+            'np': (self.finalbalance-self.initialbalance),
             'rpl': rpl,
+            'urpl': (self.finalbalance-self.initialbalance)-rpl,
             'result_won_trades': trade_analysis.won.pnl.total,
             'result_lost_trades': trade_analysis.lost.pnl.total,
             'profit_factor': (-1 * trade_analysis.won.pnl.total / trade_analysis.lost.pnl.total),
@@ -169,6 +242,7 @@ class rrGoldenBt:
             'ar': ar,
             'max_money_drawdown': drawdown['max']['moneydown'],
             'max_pct_drawdown': drawdown['max']['drawdown'],
+            'commissions': (trade_analysis.pnl.gross.total-trade_analysis.pnl.net.total),
             # trades
             'total_number_trades': total_number_trades,
             'open_trades': total_number_trades-trades_closed,
@@ -213,16 +287,25 @@ class GoldenStrategy(bt.Strategy):
         ('smalong', 200)
     )
 
-    def __init__(self, maxinv=0.03):
+    def __init__(self):
         # start logger service
         from rrlib.rrLogger import logger
+        from rrlib.rrPortfolio import rrPortfolio
+        self.portfolio = rrPortfolio()
         self.log = logger()
         # To keep track of pending orders
-        self.order = None
         self.buyprice = None
         self.buycomm = None
         self.oneplot = False
-        self.maxinv = maxinv
+        # starting ini parameters
+        import configparser
+        config = configparser.ConfigParser()
+        config.read("rrlib/robotRay.ini")
+        # max investment in % terms of porfolio
+        # deprecating margin relates to R not maxinv
+        self.maxinv = config.get('backtrader', 'maxinv')
+        self.marginRequirement = float(config.get('backtrader', 'marginreq'))
+        self.stoplossdistance = float(config.get('backtrader', 'stoploss'))
 
         # Add two MovingAverageSimple indicator and a crossover
         self.inds = dict()
@@ -263,10 +346,8 @@ class GoldenStrategy(bt.Strategy):
             self.bar_executed = len(self)
 
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
-            self.log.logger.debug('Order Canceled/Margin/Rejected')
-
-        # Write down: no pending order
-        self.order = None
+            self.log.logger.info('Order Canceled/Margin/Rejected')
+            self.log.logger.info(order)
 
     def notify_trade(self, trade):
         if not trade.isclosed:
@@ -277,15 +358,18 @@ class GoldenStrategy(bt.Strategy):
 
     def next(self):
         for i, d in enumerate(self.datas):
-            dt, dn = self.datetime.date(), d._name
             position = self.getposition(d).size
-            self.size = math.floor((float(self.maxinv)*float(self.broker.cash)) /
-                                   (d.close*100))
+            # of stoploss distance in % terms
+            stop_price = (d.close * (1 - self.stoplossdistance))
+            self.size = math.floor(float(self.portfolio.R) /
+                                   (d.close-stop_price))
             if not position:  # no market / no orders
                 if self.inds[d]['cross'][0] == 1:
                     self.buy(data=d, size=self.size)
+                    self.sell(exectype=bt.Order.Stop, size=self.size, price=stop_price)
                 elif self.inds[d]['cross'][0] == -1:
                     self.sell(data=d, size=self.size)
+                    self.buy(exectype=bt.Order.Stop, size=self.size, price=stop_price)
             else:
                 if self.inds[d]['cross'][0] == 1:
                     self.close(data=d)
@@ -293,3 +377,6 @@ class GoldenStrategy(bt.Strategy):
                 elif self.inds[d]['cross'][0] == -1:
                     self.close(data=d)
                     self.sell(data=d, size=self.size)
+
+            if len(d) == (d.buflen()-1):
+                self.close(d, exectype=bt.Order.Market)

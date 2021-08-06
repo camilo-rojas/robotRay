@@ -103,11 +103,14 @@ class OptionDFPublic():
                 putURL = OptionManager.getPutFormater(
                     self.symbol, month, strike)
                 # print(putURL)
-                url = "https://finance.yahoo.com/quote/"+putURL
-                self.log.logger.debug("    URL \n"+str(url))
+                url = "http://finance.yahoo.com/quote/"+putURL+"?p="+putURL
+                self.log.logger.info("    URL \n"+str(url))
                 sauce = urllib.request.urlopen(
                     url, timeout=self.timeout).read()
             except HTTPError as e:
+                if e.code == 404:
+                    soup = bs(e.fp.read())
+                    print(soup.prettify())
                 self.log.logger.error(
                     "      HTTP Error= "+str(e.code)+" for stock "+self.symbol)
                 return df

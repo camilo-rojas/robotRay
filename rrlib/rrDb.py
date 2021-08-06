@@ -137,6 +137,7 @@ class rrDbManager:
         from rrlib.rrDataFetcher import StockDataFetcher as stckFetcher
         from rrlib.rrDataFetcher import OptionDataFetcher as optFetcher
         from random import randint
+        from pprint import pprint
         self.log.logger.debug("  DB Manager Get Stock data.  ")
         StockData.create_table()
         try:
@@ -147,7 +148,7 @@ class rrDbManager:
                     "  DB Manager Attempting to retreive data for "+stock.ticker)
                 try:
                     dataFetcher = stckFetcher(stock.ticker).getData()
-                    price = float(dataFetcher.iloc[68]['value'])
+                    price = float(dataFetcher.iloc[70]['value'])
                     if dataFetcher.iloc[9]['value'] == "-":
                         perfWeek = 0
                     else:
@@ -177,27 +178,27 @@ class rrDbManager:
                         strike = round(strike, -1)
                     elif strike > 1000:
                         strike = round(strike, -2)
-
                     try:
                         strikes = optFetcher(stock.ticker).getStrikes()
                         if strike not in strikes.values:
+
                             strike = int(min(strikes.values, key=lambda x: abs(x-strike)))
                     except Exception:
                         self.log.logger.warning("  Exception with strikes for:"+stock.ticker)
                     row = {'stock': stock.ticker, 'strike': str(int(strike)), 'timestamp': str(datetime.datetime.now()),
-                           'price': dataFetcher.iloc[68]['value'], 'prevClose': dataFetcher.iloc[62]['value'],
-                           'salesqq': dataFetcher.iloc[53]['value'], 'sales5y': dataFetcher.iloc[47]['value'],
-                           'beta': dataFetcher.iloc[44]['value'], 'roe': dataFetcher.iloc[36]['value'],
-                           'roi': dataFetcher.iloc[42]['value'], 'recom': dataFetcher.iloc[69]['value'],
-                           'earnDate': dataFetcher.iloc[65]['value'], 'targetPrice': dataFetcher.iloc[31]['value'],
+                           'price': dataFetcher.iloc[70]['value'], 'prevClose': dataFetcher.iloc[64]['value'],
+                           'salesqq': dataFetcher.iloc[54]['value'], 'sales5y': dataFetcher.iloc[48]['value'],
+                           'beta': dataFetcher.iloc[45]['value'], 'roe': dataFetcher.iloc[36]['value'],
+                           'roi': dataFetcher.iloc[43]['value'], 'recom': dataFetcher.iloc[71]['value'],
+                           'earnDate': dataFetcher.iloc[67]['value'], 'targetPrice': dataFetcher.iloc[31]['value'],
                            'shortFloat': dataFetcher.iloc[20]['value'], 'shortRatio': dataFetcher.iloc[26]['value'],
-                           'w52High': dataFetcher.iloc[43]['value'], 'w52Low': dataFetcher.iloc[49]['value'],
-                           'relVolume': dataFetcher.iloc[61]['value'], 'sma20': dataFetcher.iloc[70]['value'],
-                           'sma50': dataFetcher.iloc[71]['value'], 'sma200': dataFetcher.iloc[72]['value'],
-                           'perfDay': dataFetcher.iloc[74]['value'], 'perfWeek': dataFetcher.iloc[9]['value'],
+                           'w52High': dataFetcher.iloc[44]['value'], 'w52Low': dataFetcher.iloc[50]['value'],
+                           'relVolume': dataFetcher.iloc[58]['value'], 'sma20': dataFetcher.iloc[72]['value'],
+                           'sma50': dataFetcher.iloc[73]['value'], 'sma200': dataFetcher.iloc[74]['value'],
+                           'perfDay': dataFetcher.iloc[76]['value'], 'perfWeek': dataFetcher.iloc[9]['value'],
                            'perfMonth': dataFetcher.iloc[15]['value'], 'perfQuarter': dataFetcher.iloc[21]['value'],
                            'perfHalfYear': dataFetcher.iloc[27]['value'], 'perfYear': dataFetcher.iloc[32]['value'],
-                           'perfYTD': dataFetcher.iloc[38]['value']}
+                           'perfYTD': dataFetcher.iloc[39]['value']}
                     self.log.logger.debug("  DB Manager Built row:"+str(row))
                     StockData.insert(row).execute()
                     self.log.logger.debug(
@@ -208,9 +209,9 @@ class rrDbManager:
                                    + "INFO -     DONE - Data retreived for " +
                                    stock.ticker+", strike: "+str(strike)
                                    + ", price:$" +
-                                   str(dataFetcher.iloc[68]['value']) +
-                                   ", sales growth QtQ:"+str(dataFetcher.iloc[53]['value'])
-                                   + ", earnings date: "+str(dataFetcher.iloc[65]['value'])+", target price:$"+str(dataFetcher.iloc[31]['value']))
+                                   str(price) +
+                                   ", sales growth QtQ:"+str(dataFetcher.iloc[54]['value'])
+                                   + ", earnings date: "+str(dataFetcher.iloc[67]['value'])+", target price:$"+str(dataFetcher.iloc[31]['value']))
                 except Exception as e:
                     self.log.logger.error(
                         "  DB Manager Error failed to fetch data for:"+stock.ticker)
@@ -245,8 +246,11 @@ class rrDbManager:
                             .order_by(OptionData.kpi.desc()).get().kpi)
                     except Exception:
                         higherOptionData = 0
-                    salesQtQ = float((StockData.select(StockData.salesqq).where(
-                        StockData.stock == stock.ticker).order_by(StockData.id.desc()).get().salesqq).strip('%'))/100
+                    try:
+                        salesQtQ = float((StockData.select(StockData.salesqq).where(
+                            StockData.stock == stock.ticker).order_by(StockData.id.desc()).get().salesqq).strip('%'))/100
+                    except Exception:
+                        salesQtQ = 0
                     sma200 = float((StockData.select(StockData.sma200).where(
                         StockData.stock == stock.ticker).order_by(StockData.id.desc()).get().sma200).strip('%'))/100
                     kpi = round(-22*pctChange*0.5+0.1*higherOptionData +

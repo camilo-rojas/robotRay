@@ -161,7 +161,7 @@ class rrPutSellStrategy:
                           bid="1.1", ask="1.1", expectedPremium="1", Rpotential="1.1"):
         message = ""
         try:
-            message = "\n\n" + "     --------------PROSPECT DETAILS-------------------\n" + "     STO " + \
+            message = "\n\n    --------------PROSPECT DETAILS-------------------\n" + "     STO " + \
                 stock + " " + expireDate + "P" + strike + " price:" + str(round(float(price), 2))+"\n" + "     Best month is: " + expireDate + \
                 ", strike "+strike + ", price " + str(round(float(price), 2)) + ", quantity " + contracts + ", current range is \n" + "     Bid: " + \
                 str(round(float(bid), 2)) + " and Ask: " + str(round(float(ask), 2)) + " min premium expected is: " + \
@@ -221,13 +221,13 @@ class rrPutSellStrategy:
                                     (float(prospect.price)-float(prospect.currentPrice))*100-float(prospect.contracts)*2, 2))
                     report = {}
                     report["value1"] = "Time to close the contract<br>Stock:"+prospect.stock +\
-                        " Strike:" + prospect.strike +\
+                        " Strike:" + str(prospect.strike) +\
                         " Expiration Date:" + str(prospect.expireDate)
-                    report["value2"] = "Contracts:" + prospect.contracts+" Closing Price:" +\
+                    report["value2"] = "Contracts:" + str(prospect.contracts)+" Closing Price:" +\
                         str(round(float(prospect.currentPrice), 3)) +\
                         " PNL for this oppty:" + pnl
                     report["value3"] = "Stock ownership:" +\
-                        prospect.stockOwnership+" Color:"+prospect.color
+                        str(prospect.stockOwnership)+" Color:"+prospect.color
                     self.log.logger.debug(
                         "    Communicator, invoking with these parameters " + str(report))
                     self.db.updateServerRun(pnl=pnl)
