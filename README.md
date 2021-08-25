@@ -58,3 +58,12 @@ The project architecture is the following:
 ## Getting Started
 In a Python shell invoke the *python3 rrlib/rrServer.py* command to start the bot trading program.
 Currently no command line parameters are supported, but operation can be configured from the ini file in the rrlib directory.
+
+## Install on CentOS 8
+- Generate your userid for robotRay, need sudo (wheel) group for TA-lib and sqlite3 if it needs to be installed, useradd, passwd, usermod -aG wheel
+- Yum update python (3.8+), sqlite, ta-lib (https://mrjbq7.github.io/ta-lib/install.html), [tar, xz-devel, gcc, make for ta-lib install].  Or compile/install if not already
+- Create your robotRay directory and git fetch https://github.com/camilo-rojas/robotRay
+- Create your venv for python if required. python3 -m venv venv.  Activate the environment source venv/bin/activate
+- Pip upgrade environment and install all requirements.txt
+- Adjust robotRay.ini based from robotRay.sample.ini with your parameters and stock
+* If you have problems installing pip install pysqlite3 with errors or problems be sure to install sudo yum install sqlite-devel

@@ -102,28 +102,40 @@ class rrBacktrader:
                 self.log.logger.warning(e)
 
     def max_sql_variables(self):
-        import sqlite3
-        db = sqlite3.connect(':memory:')
-        cur = db.cursor()
-        cur.execute('CREATE TABLE t (test)')
         low, high = 0, 100000
-        while (high - 1) > low:
-            guess = (high + low) // 2
-            query = 'INSERT INTO t VALUES ' + ','.join(['(?)' for _ in
-                                                        range(guess)])
-            args = [str(i) for i in range(guess)]
+        try:
             try:
-                cur.execute(query, args)
-            except sqlite3.OperationalError as e:
-                if "too many SQL variables" in str(e):
-                    high = guess
+                import pysqlite3 as sqlite3
+            except Exception as e:
+                self.log.logger.warning("Unable to load pysqlite3 will try with sqlite3")
+                self.log.logger.warning(e)
+                import sqlite3
+            db = sqlite3.connect(':memory:')
+            cur = db.cursor()
+            cur.execute('CREATE TABLE t (test)')
+
+            while (high - 1) > low:
+                guess = (high + low) // 2
+                query = 'INSERT INTO t VALUES ' + ','.join(['(?)' for _ in
+                                                            range(guess)])
+                args = [str(i) for i in range(guess)]
+                try:
+                    cur.execute(query, args)
+                except sqlite3.OperationalError as e:
+                    if "too many SQL variables" in str(e):
+                        high = guess
+                    else:
+                        raise
                 else:
-                    raise
-            else:
-                low = guess
-        cur.close()
-        db.close()
-        return low
+                    low = guess
+            cur.close()
+            db.close()
+            return low
+        except Exception as e:
+            self.log.logger.warning(
+                "Unable to load SQLite3 library binary, can't download backtrade to SQLite3")
+            self.log.logger.warning(e)
+            return 512
 
 
 class historicData(pw.Model):
