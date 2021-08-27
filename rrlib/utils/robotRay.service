@@ -1,0 +1,29 @@
+#CentOS service sample implementation
+
+[Unit]
+Description=robotRay
+After=syslog.target
+#Requires=
+
+[Service]
+Type=idle
+User=camilor
+Group=camilor
+WorkingDirectory=/home/camilor/robotRay/robotRay
+TimeoutStartSec=0
+#ExecStartPre=
+StandardOutput=syslog
+StandardError=syslog
+Environment="HOME_DIR=/home/camilor/robotRay/robotRay"
+Environment=PATH="$HOME_DIR:$PATH"
+ExecStart=${HOME_DIR}/venv/bin/python3.9 rrlib/rrServer.py
+
+[Install]
+WantedBy=multi-user.target
+
+# CentOS - service install config
+# place .service file in /etc/systemd/system, adapt home and path
+# sudo systemctl enable /etc/systemd/system/robotRay.service
+# sudo systemctl start /etc/systemd/system/robotRay.service
+# sudo systemctl status robotRay.service
+# journalctl -u robotRay.service

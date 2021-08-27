@@ -117,7 +117,11 @@ class server():
             self.run_threaded(self.bot.startbot)
         while True:
             try:
-                command = input("> ")
+                if not sys.stdin.isatty():
+                    command = ""
+                    time.sleep(10)
+                else:
+                    command = input("> ")
                 response = self.controller.consolecommand(command)
                 if len(response) > 0:
                     for message in response[1:]:
